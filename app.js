@@ -7300,8 +7300,16 @@ export default function App() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, newSession) => {
-      setSession(newSession);
+      // Prevent unwanted logout on app launch:
+      // Only update the session if Supabase provides a non-null session.
+      if (newSession !== null) {
+        setSession(newSession);
+      }
+
+      // Auth is now ready regardless of event type
       setAuthReady(true);
+
+      // Preserve password recovery logic
       if (event === "PASSWORD_RECOVERY") {
         setPasswordResetRequested(true);
       }
