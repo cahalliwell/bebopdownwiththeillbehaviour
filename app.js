@@ -1258,10 +1258,13 @@ const formatCount = (value, noun) => {
 };
 
 function ReadingPatternsCard({ monthlyData, weeklyData, totalYearReadings, loading }) {
+  const safeMonthly = Array.isArray(monthlyData) ? monthlyData : [];
+  const safeWeekly = Array.isArray(weeklyData) ? weeklyData : [];
+
   const insights = useMemo(() => {
     const totalPhrase = `You cast ${totalYearReadings || 0} readings over the last 12 months.`;
 
-    const mostActiveMonth = (monthlyData || []).reduce(
+    const mostActiveMonth = safeMonthly.reduce(
       (acc, entry) => {
         if ((entry?.readings || 0) > (acc?.readings || 0)) return entry;
         return acc;
@@ -1269,7 +1272,7 @@ function ReadingPatternsCard({ monthlyData, weeklyData, totalYearReadings, loadi
       { month: null, readings: 0 }
     );
 
-    const mostActiveDay = (weeklyData || []).reduce(
+    const mostActiveDay = safeWeekly.reduce(
       (acc, entry) => {
         if ((entry?.readings || 0) > (acc?.readings || 0)) return entry;
         return acc;
@@ -1294,7 +1297,7 @@ function ReadingPatternsCard({ monthlyData, weeklyData, totalYearReadings, loadi
     }
 
     return phrases;
-  }, [monthlyData, totalYearReadings, weeklyData]);
+  }, [safeMonthly, safeWeekly, totalYearReadings]);
 
   return (
     <View style={stylesInsights.chartCard}>
@@ -1317,9 +1320,11 @@ function ReadingPatternsCard({ monthlyData, weeklyData, totalYearReadings, loadi
 }
 
 function TopHexagramsTextList({ data, loading, hexagrams }) {
+  const safeData = Array.isArray(data) ? data : [];
+
   const topFive = useMemo(() => {
-    if (!data?.length) return [];
-    return data
+    if (!safeData.length) return [];
+    return safeData
       .filter((item) => item?.hexagram_primary != null)
       .map((item) => ({
         number: Number(item.hexagram_primary),
@@ -1327,7 +1332,7 @@ function TopHexagramsTextList({ data, loading, hexagrams }) {
       }))
       .sort((a, b) => b.total - a.total)
       .slice(0, 5);
-  }, [data]);
+  }, [safeData]);
 
   const lookupName = useCallback(
     (number) => getHexagramNameByNumber(hexagrams, number) || "Unknown",
@@ -1371,6 +1376,8 @@ function TopHexagramsTextList({ data, loading, hexagrams }) {
 }
 
 function MonthlyActivityRow({ data, loading }) {
+  const safeData = Array.isArray(data) ? data : [];
+
   return (
     <View style={stylesInsights.chartCard}>
       <Text style={stylesInsights.sectionTitle}>Monthly Activity (Past Year)</Text>
@@ -1381,13 +1388,13 @@ function MonthlyActivityRow({ data, loading }) {
       >
         {loading
           ? MONTH_KEYS.map((month) => (
-              <ShimmerPlaceholder
-                key={`month-${month}`}
-                height={36}
-                style={stylesInsights.monthBadgeShimmer}
-              />
-            ))
-          : data.map((item) => (
+            <ShimmerPlaceholder
+              key={`month-${month}`}
+              height={36}
+              style={stylesInsights.monthBadgeShimmer}
+            />
+          ))
+          : safeData.map((item) => (
               <View key={`month-pill-${item.month}`} style={stylesInsights.monthBadge}>
                 <Text style={stylesInsights.monthLabel}>{item.month}</Text>
                 <View style={stylesInsights.monthPill}>
