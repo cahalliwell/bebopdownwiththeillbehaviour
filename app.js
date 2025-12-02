@@ -7324,17 +7324,28 @@ export default function App() {
 
   const handleAuthLink = useCallback(
     async (url) => {
-      if (!url || !url.includes("auth/reset")) return;
+      if (!url) return;
+
+      const isResetLink = url.includes("auth/reset");
+      const isAuthCallbackLink = url.includes("auth/callback");
+      if (!isResetLink && !isAuthCallbackLink) return;
+
       try {
         const { error } = await supabase.auth.exchangeCodeForSession(url);
         if (error) throw error;
-        beginPasswordResetFlow();
+        if (isResetLink) {
+          beginPasswordResetFlow();
+        }
       } catch (error) {
-        console.log("Password reset link error:", error?.message || error);
-        Alert.alert(
-          "Password reset",
-          "We couldn't open that link. Please request a new reset email."
-        );
+        const errorPrefix = isResetLink
+          ? "Password reset link error:"
+          : "Auth callback link error:";
+        console.log(errorPrefix, error?.message || error);
+        const alertTitle = isResetLink ? "Password reset" : "Sign-in";
+        const alertMessage = isResetLink
+          ? "We couldn't open that link. Please request a new reset email."
+          : "We couldn't complete the login link. Please try again.";
+        Alert.alert(alertTitle, alertMessage);
       }
     },
     [beginPasswordResetFlow]
