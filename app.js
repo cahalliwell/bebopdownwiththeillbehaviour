@@ -41,6 +41,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
+import * as MailComposer from "expo-mail-composer";
 import {
   useFonts as useMarcellus,
   Marcellus_400Regular,
@@ -6911,16 +6912,19 @@ function SettingsScreen({ navigation }) {
       Alert.alert("Feedback", "Please share a few words before submitting.");
       return;
     }
-    const subject = encodeURIComponent("AI Ching Insights Feedback");
-    const body = encodeURIComponent(trimmed);
-    const mailto = `mailto:i.ching.insights64@gmail.com?subject=${subject}&body=${body}`;
     try {
-      const canOpen = await Linking.canOpenURL(mailto);
-      if (!canOpen) {
+      const isMailAvailable = await MailComposer.isAvailableAsync();
+      if (!isMailAvailable) {
         throw new Error("No email app available");
       }
-      await Linking.openURL(mailto);
-      setFeedback("");
+      const result = await MailComposer.composeAsync({
+        recipients: ["i.ching.insights64@gmail.com"],
+        subject: "AI Ching Insights Feedback",
+        body: trimmed,
+      });
+      if (result?.status !== "cancelled") {
+        setFeedback("");
+      }
     } catch (error) {
       Alert.alert("Unable to send email", error?.message || "Please try again.");
     }
