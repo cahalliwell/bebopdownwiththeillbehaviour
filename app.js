@@ -6919,21 +6919,31 @@ function SettingsScreen({ navigation }) {
       Alert.alert("Feedback", "Please share a few words before submitting.");
       return;
     }
+    const subject = "AI Ching Insights Feedback";
+    const mailto = `mailto:i.ching.insights64@gmail.com?subject=${encodeURIComponent(
+      subject
+    )}&body=${encodeURIComponent(trimmed)}`;
     try {
       const isMailAvailable = await MailComposer.isAvailableAsync();
-      if (!isMailAvailable) {
-        throw new Error("No email app available");
+      if (isMailAvailable) {
+        const result = await MailComposer.composeAsync({
+          recipients: ["i.ching.insights64@gmail.com"],
+          subject,
+          body: trimmed,
+        });
+        if (result?.status !== "cancelled") {
+          setFeedback("");
+        }
+        return;
       }
-      const result = await MailComposer.composeAsync({
-        recipients: ["i.ching.insights64@gmail.com"],
-        subject: "AI Ching Insights Feedback",
-        body: trimmed,
-      });
-      if (result?.status !== "cancelled") {
-        setFeedback("");
-      }
+
+      await Linking.openURL(mailto);
+      setFeedback("");
     } catch (error) {
-      Alert.alert("Unable to send email", error?.message || "Please try again.");
+      Alert.alert(
+        "Unable to send email",
+        error?.message || "Please install an email app to send feedback."
+      );
     }
   }, [feedback]);
 
