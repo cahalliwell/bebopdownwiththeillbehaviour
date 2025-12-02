@@ -7300,9 +7300,10 @@ export default function App() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, newSession) => {
-      // Prevent unwanted logout on app launch:
-      // Only update the session if Supabase provides a non-null session.
-      if (newSession !== null) {
+      // Prevent unwanted logout on app launch while still allowing explicit sign-out
+      if (event === "SIGNED_OUT") {
+        setSession(null);
+      } else if (newSession !== null) {
         setSession(newSession);
       }
 
