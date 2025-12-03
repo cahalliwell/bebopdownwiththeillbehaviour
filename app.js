@@ -2136,6 +2136,9 @@ function lineFromManualValue(value) {
 }
 
 function flipLinesForResult(lines) {
+  if (!Array.isArray(lines) || !lines.some((line) => line?.moving)) {
+    return [];
+  }
   return lines.map((line) => ({
     v: line.moving ? (line.v ? 0 : 1) : line.v,
     moving: false,
@@ -4506,16 +4509,13 @@ function CastScreen({ route, navigation }) {
     });
   };
 
-  const resultingLines = useMemo(
-    () => (lines.length === 6 ? flipLinesForResult(lines) : []),
-    [lines]
-  );
+  const resultingLines = useMemo(() => flipLinesForResult(lines), [lines]);
   const primaryHex = useMemo(
     () => (lines.length === 6 ? chooseByLines(lines, all) : null),
     [lines, all]
   );
   const resultingHex = useMemo(
-    () => (lines.length === 6 ? chooseByLines(resultingLines, all) : null),
+    () => (resultingLines.length === 6 ? chooseByLines(resultingLines, all) : null),
     [resultingLines, all]
   );
 
@@ -4697,7 +4697,7 @@ function ManualCastingScreen({ route, navigation }) {
     if (!isComplete) return;
     const resulting = flipLinesForResult(manualLines);
     const primaryHex = chooseByLines(manualLines, hexagrams);
-    const resultingHex = chooseByLines(resulting, hexagrams);
+    const resultingHex = resulting.length === 6 ? chooseByLines(resulting, hexagrams) : null;
     navigation.replace("Results", {
       question,
       primary: primaryHex,
@@ -5101,11 +5101,17 @@ function ResultsScreen({ navigation, route }) {
                 item={primary}
                 onPress={() => openReading(primary, primaryLines, "primary")}
               />
-            ) : (
+            ) : resulting ? (
               <HexagramCard
                 item={resulting}
                 onPress={() => openReading(resulting, resultingLines, "resulting")}
               />
+            ) : (
+              <View style={stylesResults.noResultingBox}>
+                <Text style={stylesResults.noResultingTitle}>
+                  No changing lines — no resulting hexagram.
+                </Text>
+              </View>
             )}
 
             {primary ? (
@@ -5175,6 +5181,20 @@ const stylesResults = StyleSheet.create({
   questionText: {
     fontFamily: fonts.body,
     color: palette.ink,
+  },
+  noResultingBox: {
+    backgroundColor: palette.white,
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: theme.radius,
+    padding: theme.space(1.5),
+    marginBottom: theme.space(1),
+    alignItems: "center",
+  },
+  noResultingTitle: {
+    fontFamily: fonts.bodyBold,
+    color: palette.ink,
+    textAlign: "center",
   },
   tabs: {
     flexDirection: "row",
