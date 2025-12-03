@@ -4509,14 +4509,25 @@ function CastScreen({ route, navigation }) {
     });
   };
 
-  const resultingLines = useMemo(() => flipLinesForResult(lines), [lines]);
+  const hasMovingLines = useMemo(
+    () => lines.some((line) => line?.moving),
+    [lines]
+  );
+
+  const resultingLines = useMemo(
+    () => (hasMovingLines ? flipLinesForResult(lines) : []),
+    [hasMovingLines, lines]
+  );
   const primaryHex = useMemo(
     () => (lines.length === 6 ? chooseByLines(lines, all) : null),
     [lines, all]
   );
   const resultingHex = useMemo(
-    () => (resultingLines.length === 6 ? chooseByLines(resultingLines, all) : null),
-    [resultingLines, all]
+    () =>
+      hasMovingLines && resultingLines.length === 6
+        ? chooseByLines(resultingLines, all)
+        : null,
+    [hasMovingLines, resultingLines, all]
   );
 
   return (
@@ -4606,9 +4617,9 @@ function CastScreen({ route, navigation }) {
                 navigation.replace("Results", {
                   question,
                   primary: primaryHex,
-                  resulting: resultingHex,
+                  resulting: hasMovingLines ? resultingHex : null,
                   primaryLines: lines,
-                  resultingLines,
+                  resultingLines: hasMovingLines ? resultingLines : [],
                 })
               }
               icon={<Ionicons name="book-outline" size={18} color={palette.gold} />}
@@ -5973,25 +5984,27 @@ function JournalDetailScreen({ route, navigation }) {
                 View
               </Text>
             </View>
-            <View style={stylesDetail.hexRow}>
-              <HexagonThumbnail
-                uri={entry.resulting?.imageUrl}
-                hexNumber={entry.resulting?.number}
-                size={60}
-              />
-              <View style={stylesDetail.hexContent}>
-                <Text style={stylesDetail.hexTitle}>{entry.resulting?.name || "Resulting"}</Text>
-                <Text style={stylesDetail.hexSubtitle}>
-                  Hexagram {entry.resulting?.number ?? "--"}
+            {entry.resulting ? (
+              <View style={stylesDetail.hexRow}>
+                <HexagonThumbnail
+                  uri={entry.resulting?.imageUrl}
+                  hexNumber={entry.resulting?.number}
+                  size={60}
+                />
+                <View style={stylesDetail.hexContent}>
+                  <Text style={stylesDetail.hexTitle}>{entry.resulting?.name || "Resulting"}</Text>
+                  <Text style={stylesDetail.hexSubtitle}>
+                    Hexagram {entry.resulting?.number ?? "--"}
+                  </Text>
+                </View>
+                <Text
+                  style={stylesDetail.viewLink}
+                  onPress={() => openReading(entry.resulting, entry.resultingLines, "resulting")}
+                >
+                  View
                 </Text>
               </View>
-              <Text
-                style={stylesDetail.viewLink}
-                onPress={() => openReading(entry.resulting, entry.resultingLines, "resulting")}
-              >
-                View
-              </Text>
-            </View>
+            ) : null}
           </View>
 
           <Text style={stylesDetail.noteLabel}>Note</Text>
