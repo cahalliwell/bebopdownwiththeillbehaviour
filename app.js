@@ -1264,7 +1264,7 @@ function InsightsOverviewScreen({ navigation }) {
     warning,
   } = useInsightsData();
 
-  const columns = width < 700 ? 1 : 2;
+  const columns = width < 360 ? 1 : 2;
 
   const summaryCards = [
     {
