@@ -730,358 +730,10 @@ export function getHexagramNameByNumber(hexagrams, number) {
   return match ? match.name : null;
 }
 
-// 📈 Insights hooks
-const MOCK_SUMMARY = {
-  total_readings: 0,
-  distinct_hexagrams: 0,
-  most_drawn_hexagram: null,
-};
+// 📈 Insights rebuilt
+const monthAbbrevs = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const weekdayAbbrevs = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-function useInsightsSummary() {
-  const [data, setData] = useState(MOCK_SUMMARY);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const fetchSummary = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-      if (userError) throw userError;
-      if (!user) {
-        setData(MOCK_SUMMARY);
-        setLoading(false);
-        return;
-      }
-
-      const { data: rows, error: queryError } = await supabase
-        .from("insights_summary")
-        .select("total_readings, distinct_hexagrams, most_drawn_hexagram")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (queryError) throw queryError;
-
-      setData(
-        rows || {
-          total_readings: 0,
-          distinct_hexagrams: 0,
-          most_drawn_hexagram: null,
-        }
-      );
-    } catch (err) {
-      console.log("Insights summary error:", err?.message || err);
-      setError(err);
-      setData(MOCK_SUMMARY);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchSummary();
-  }, [fetchSummary]);
-
-  return { data, loading, error, refetch: fetchSummary };
-}
-
-const MOCK_COUNTS = {
-  readings_today: 0,
-  readings_week: 0,
-  readings_month: 0,
-  readings_year: 0,
-  readings_total: 0,
-};
-
-function useInsightsCounts() {
-  const [data, setData] = useState(MOCK_COUNTS);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const fetchCounts = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-      if (userError) throw userError;
-      if (!user) {
-        setData(MOCK_COUNTS);
-        setLoading(false);
-        return;
-      }
-
-      const { data: rows, error: queryError } = await supabase
-        .from("insights_counts")
-        .select(
-          "readings_today, readings_week, readings_month, readings_year, readings_total"
-        )
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (queryError) throw queryError;
-      setData(rows || MOCK_COUNTS);
-    } catch (err) {
-      console.log("Insights counts error:", err?.message || err);
-      setError(err);
-      setData(MOCK_COUNTS);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchCounts();
-  }, [fetchCounts]);
-
-  return { data, loading, error, refetch: fetchCounts };
-}
-
-const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const MONTH_KEYS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
-
-const MOCK_WEEKLY = WEEKDAYS.map((weekday) => ({ weekday, readings: 0 }));
-const MOCK_MONTHLY = MONTH_KEYS.map((month) => ({ month, readings: 0 }));
-const MOCK_TOP_CASTS = [];
-
-function useInsightsWeekly() {
-  const [data, setData] = useState(MOCK_WEEKLY);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const fetchWeekly = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-      if (userError) throw userError;
-      if (!user) {
-        setData(MOCK_WEEKLY);
-        setLoading(false);
-        return;
-      }
-
-      const { data: rows, error: queryError } = await supabase
-        .from("insights_weekly")
-        .select("weekday, readings")
-        .eq("user_id", user.id);
-      if (queryError) throw queryError;
-
-      const map = new Map((rows || []).map((item) => [item.weekday, item.readings]));
-      const normalized = WEEKDAYS.map((weekday) => ({
-        weekday,
-        readings: Number(map.get(weekday)) || 0,
-      }));
-      setData(normalized);
-    } catch (err) {
-      console.log("Insights weekly error:", err?.message || err);
-      setError(err);
-      setData(MOCK_WEEKLY);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchWeekly();
-  }, [fetchWeekly]);
-
-  return { data, loading, error, refetch: fetchWeekly };
-}
-
-function useInsightsMonthly() {
-  const [data, setData] = useState(MOCK_MONTHLY);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const fetchMonthly = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-      if (userError) throw userError;
-      if (!user) {
-        setData(MOCK_MONTHLY);
-        setLoading(false);
-        return;
-      }
-
-      const { data: rows, error: queryError } = await supabase
-        .from("insights_monthly")
-        .select("month, readings")
-        .eq("user_id", user.id);
-      if (queryError) throw queryError;
-
-      const map = new Map((rows || []).map((item) => [item.month, item.readings]));
-      const normalized = MONTH_KEYS.map((month) => ({
-        month,
-        readings: Number(map.get(month)) || 0,
-      }));
-      setData(normalized);
-    } catch (err) {
-      console.log("Insights monthly error:", err?.message || err);
-      setError(err);
-      setData(MOCK_MONTHLY);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchMonthly();
-  }, [fetchMonthly]);
-
-  return { data, loading, error, refetch: fetchMonthly };
-}
-
-function useInsightsTopCasts() {
-  const [data, setData] = useState(MOCK_TOP_CASTS);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const fetchTopCasts = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-      if (userError) throw userError;
-      if (!user) {
-        setData(MOCK_TOP_CASTS);
-        setLoading(false);
-        return;
-      }
-
-      const { data: rows, error: queryError } = await supabase
-        .from("insights_top5_casts")
-        .select("hexagram_primary, total_casts")
-        .eq("user_id", user.id)
-        .order("total_casts", { ascending: false });
-      if (queryError) throw queryError;
-
-      let result = rows || [];
-
-      if (!result?.length || result.length < 5) {
-        const { data: fallbackRows, error: fallbackError } = await supabase
-          .from("JournalEntries")
-          .select("hexagram_primary")
-          .eq("user_id", user.id);
-
-        if (fallbackError) {
-          console.log(
-            "Insights top casts fallback error:",
-            fallbackError?.message || fallbackError
-          );
-        } else if (fallbackRows?.length) {
-          const countsMap = new Map();
-          fallbackRows.forEach((row) => {
-            const key =
-              row?.hexagram_primary != null
-                ? Number(row.hexagram_primary)
-                : null;
-            if (key == null || Number.isNaN(key)) return;
-            countsMap.set(key, (countsMap.get(key) || 0) + 1);
-          });
-
-          const computed = Array.from(countsMap.entries())
-            .map(([hex, count]) => ({
-              hexagram_primary: hex,
-              total_casts: count,
-            }))
-            .sort((a, b) => (b.total_casts || 0) - (a.total_casts || 0))
-            .slice(0, 5);
-
-          if (computed.length) {
-            result = computed;
-          }
-        }
-      }
-
-      setData(result);
-    } catch (err) {
-      console.log("Insights top casts error:", err?.message || err);
-      setError(err);
-      setData(MOCK_TOP_CASTS);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchTopCasts();
-  }, [fetchTopCasts]);
-
-  return { data, loading, error, refetch: fetchTopCasts };
-}
-
-const MOCK_STREAK = 0;
-
-function useReadingStreak() {
-  const [data, setData] = useState(MOCK_STREAK);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const fetchStreak = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-      if (userError) throw userError;
-      if (!user) {
-        setData(MOCK_STREAK);
-        setLoading(false);
-        return;
-      }
-
-      const { data: value, error: rpcError } = await supabase.rpc("get_reading_streak", {
-        uid: user.id,
-      });
-      if (rpcError) throw rpcError;
-      setData(typeof value === "number" ? value : MOCK_STREAK);
-    } catch (err) {
-      console.log("Reading streak error:", err?.message || err);
-      setError(err);
-      setData(MOCK_STREAK);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchStreak();
-  }, [fetchStreak]);
-
-  return { data, loading, error, refetch: fetchStreak };
-}
-
-// 📊 Insights screen
 let MotionView = Animated.View;
 try {
   const { MotiView } = require("moti");
@@ -1174,192 +826,354 @@ function ShimmerPlaceholder({ height, style }) {
   );
 }
 
-function SummaryCard({
-  title,
-  subtitle,
-  value,
-  loading,
-  accent,
-  delay = 0,
-  column = 0,
-  isSolo = false,
-}) {
-  const displayValue = useAnimatedCounter(value, loading);
-  return (
-    <MotionView
-      style={[
-        stylesInsights.summaryCard,
-        !isSolo && column === 0 && stylesInsights.summaryCardLeft,
-        !isSolo && column === 1 && stylesInsights.summaryCardRight,
-        isSolo && stylesInsights.summaryCardSolo,
-        { borderColor: accent || palette.gold },
-      ]}
-      {...motionProps(delay)}
-    >
-      <View style={stylesInsights.summaryHeader}>
-        <Text style={stylesInsights.summaryLabel}>{title}</Text>
-        {subtitle ? <Text style={stylesInsights.summarySubtitle}>{subtitle}</Text> : null}
-      </View>
-      {loading ? (
-        <ShimmerPlaceholder
-          height={32}
-          style={[stylesInsights.summaryPlaceholder, stylesInsights.summaryValuePlaceholder]}
-        />
-      ) : (
-        <Text style={stylesInsights.summaryValue}>{displayValue}</Text>
-      )}
-    </MotionView>
-  );
-}
-
-function CounterRow({ label, value, loading }) {
-  const displayValue = useAnimatedCounter(value, loading);
-  return (
-    <View style={stylesInsights.counterRow}>
-      <Text style={stylesInsights.counterLabel}>{label}</Text>
-      {loading ? (
-        <ShimmerPlaceholder height={18} style={stylesInsights.counterPlaceholder} />
-      ) : (
-        <Text style={stylesInsights.counterValue}>{displayValue}</Text>
-      )}
-    </View>
-  );
-}
-
-const MONTH_FULL_NAMES = {
-  Jan: "January",
-  Feb: "February",
-  Mar: "March",
-  Apr: "April",
-  May: "May",
-  Jun: "June",
-  Jul: "July",
-  Aug: "August",
-  Sep: "September",
-  Oct: "October",
-  Nov: "November",
-  Dec: "December",
-};
-
-const WEEKDAY_FULL_NAMES = {
-  Mon: "Monday",
-  Tue: "Tuesday",
-  Wed: "Wednesday",
-  Thu: "Thursday",
-  Fri: "Friday",
-  Sat: "Saturday",
-  Sun: "Sunday",
-};
-
 const formatCount = (value, noun) => {
   const safe = Number(value) || 0;
   const pluralized = safe === 1 ? noun : `${noun}s`;
   return `${safe} ${pluralized}`;
 };
 
-function ReadingPatternsCard({ monthlyData, weeklyData, totalYearReadings, loading }) {
-  const safeMonthly = Array.isArray(monthlyData) ? monthlyData : [];
-  const safeWeekly = Array.isArray(weeklyData) ? weeklyData : [];
+const dateKey = (date) => {
+  const copy = new Date(date);
+  copy.setHours(0, 0, 0, 0);
+  const m = `${copy.getMonth() + 1}`.padStart(2, "0");
+  const d = `${copy.getDate()}`.padStart(2, "0");
+  return `${copy.getFullYear()}-${m}-${d}`;
+};
 
-  const insights = useMemo(() => {
-    const totalPhrase = `You cast ${totalYearReadings || 0} readings over the last 12 months.`;
+const weekdayMostLabel = (key) => {
+  const index = weekdayAbbrevs.indexOf(key);
+  if (index === -1) return key;
+  return ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][index];
+};
 
-    const mostActiveMonth = safeMonthly.reduce(
+function computeStreaks(entries) {
+  if (!Array.isArray(entries) || !entries.length) {
+    return { current: 0, longest: 0 };
+  }
+  const dateSet = new Set(entries.map((entry) => dateKey(entry.createdAt || entry.created_at || entry.date)));
+
+  let current = 0;
+  const cursor = new Date();
+  while (dateSet.has(dateKey(cursor))) {
+    current += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  const sortedDates = Array.from(dateSet)
+    .map((value) => new Date(`${value}T00:00:00`))
+    .sort((a, b) => a - b);
+  let longest = 0;
+  let run = 0;
+  let previous = null;
+  sortedDates.forEach((date) => {
+    if (!previous) {
+      run = 1;
+    } else {
+      const diffDays = (date - previous) / (1000 * 60 * 60 * 24);
+      if (diffDays === 1) {
+        run += 1;
+      } else {
+        run = 1;
+      }
+    }
+    longest = Math.max(longest, run);
+    previous = date;
+  });
+
+  return { current, longest };
+}
+
+function useInsightsData() {
+  const { entries, loading: journalLoading } = useJournal();
+  const [hexagrams, setHexagrams] = useState([]);
+  const [hexagramsLoading, setHexagramsLoading] = useState(true);
+  const [warning, setWarning] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const loaded = await loadHexagrams();
+        if (active) setHexagrams(loaded);
+      } catch (error) {
+        console.log("Hexagram load error:", error?.message || error);
+        if (active) setWarning("Showing recent data");
+      } finally {
+        if (active) setHexagramsLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const safeEntries = useMemo(() => {
+    return (entries || []).filter((entry) => entry && entry.createdAt);
+  }, [entries]);
+
+  const now = new Date();
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(now.getDate() - 6);
+  const startOfYear = new Date(now.getFullYear(), 0, 1);
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const streaks = useMemo(() => computeStreaks(safeEntries), [safeEntries]);
+
+  const aggregates = useMemo(() => {
+    const monthMap = new Map();
+    const weekdayMap = new Map();
+    const hexagramCounts = new Map();
+    let todayCount = 0;
+    let weekCount = 0;
+    let monthCount = 0;
+    let yearCount = 0;
+
+    safeEntries.forEach((entry) => {
+      const created = new Date(entry.createdAt);
+      const key = `${created.getFullYear()}-${created.getMonth()}`;
+      const monthLabel = monthAbbrevs[created.getMonth()] || "";
+      const weekdayLabel = weekdayAbbrevs[created.getDay()] || "";
+
+      if (!monthMap.has(key)) {
+        monthMap.set(key, { month: monthLabel, year: created.getFullYear(), readings: 0 });
+      }
+      monthMap.get(key).readings += 1;
+
+      const weekdayKey = weekdayLabel || created.getDay();
+      weekdayMap.set(weekdayKey, (weekdayMap.get(weekdayKey) || 0) + 1);
+
+      const todayKey = dateKey(now);
+      if (dateKey(created) === todayKey) todayCount += 1;
+      if (created >= sevenDaysAgo && created <= now) weekCount += 1;
+      if (created >= startOfMonth) monthCount += 1;
+      if (created >= startOfYear) yearCount += 1;
+
+      const hexNum = entry?.primary?.number;
+      if (hexNum != null && !Number.isNaN(Number(hexNum))) {
+        const parsed = Number(hexNum);
+        hexagramCounts.set(parsed, (hexagramCounts.get(parsed) || 0) + 1);
+      }
+    });
+
+    const monthlyActivity = [];
+    for (let i = 11; i >= 0; i -= 1) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${date.getFullYear()}-${date.getMonth()}`;
+      const fromMap = monthMap.get(key);
+      monthlyActivity.push({
+        key,
+        month: monthAbbrevs[date.getMonth()],
+        year: date.getFullYear(),
+        readings: fromMap?.readings || 0,
+      });
+    }
+
+    const mostDrawn = Array.from(hexagramCounts.entries())
+      .map(([number, total]) => ({ number, total }))
+      .sort((a, b) => b.total - a.total)[0] || null;
+
+    const distinctHexagrams = hexagramCounts.size;
+
+    const totalReadings = safeEntries.length;
+
+    const weeklyPattern = Array.from(weekdayMap.entries())
+      .map(([weekday, readings]) => ({ weekday, readings }))
+      .sort((a, b) => {
+        return weekdayAbbrevs.indexOf(a.weekday) - weekdayAbbrevs.indexOf(b.weekday);
+      });
+
+    const mostActiveMonth = monthlyActivity.reduce(
       (acc, entry) => {
-        if ((entry?.readings || 0) > (acc?.readings || 0)) return entry;
+        if ((entry.readings || 0) > (acc?.readings || 0)) return entry;
         return acc;
       },
       { month: null, readings: 0 }
     );
 
-    const mostActiveDay = safeWeekly.reduce(
-      (acc, entry) => {
-        if ((entry?.readings || 0) > (acc?.readings || 0)) return entry;
-        return acc;
+    return {
+      monthlyActivity,
+      weeklyPattern,
+      cadence: {
+        today: todayCount,
+        week: weekCount,
+        month: monthCount,
+        year: yearCount,
+        total: totalReadings,
       },
-      { weekday: null, readings: 0 }
-    );
+      mostDrawn,
+      distinctHexagrams,
+      totalReadings,
+      mostActiveMonth,
+    };
+  }, [safeEntries, now, sevenDaysAgo, startOfMonth, startOfYear]);
 
-    const phrases = [totalPhrase];
+  const topHexagrams = useMemo(() => {
+    const counts = new Map();
+    safeEntries.forEach((entry) => {
+      const hexNum = entry?.primary?.number;
+      if (hexNum == null) return;
+      const parsed = Number(hexNum);
+      if (Number.isNaN(parsed)) return;
+      counts.set(parsed, (counts.get(parsed) || 0) + 1);
+    });
+    return Array.from(counts.entries())
+      .map(([number, total]) => ({ number, total }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 5)
+      .map((item) => ({
+        ...item,
+        name: getHexagramNameByNumber(hexagrams, item.number),
+      }));
+  }, [hexagrams, safeEntries]);
 
-    if (mostActiveMonth?.month && mostActiveMonth.readings > 0) {
-      const name = MONTH_FULL_NAMES[mostActiveMonth.month] || mostActiveMonth.month;
-      phrases.push(`Your most active month was ${name}.`);
-    }
+  const monthlyReadingsLastYear = aggregates.monthlyActivity.reduce(
+    (sum, entry) => sum + (entry.readings || 0),
+    0
+  );
 
-    if (mostActiveDay?.weekday && mostActiveDay.readings > 0) {
-      const name = WEEKDAY_FULL_NAMES[mostActiveDay.weekday] || mostActiveDay.weekday;
-      phrases.push(`You tend to read most often on ${name}s.`);
-    }
+  const weeklyMostActive = aggregates.weeklyPattern.reduce(
+    (acc, entry) => {
+      if ((entry?.readings || 0) > (acc?.readings || 0)) return entry;
+      return acc;
+    },
+    { weekday: null, readings: 0 }
+  );
 
-    if (phrases.length === 1) {
-      phrases.push("Start a new reading to reveal more about your rhythm.");
-    }
+  const narrativeLines = [];
+  if (monthlyReadingsLastYear > 0) {
+    narrativeLines.push(`You cast ${monthlyReadingsLastYear} readings over the last 12 months.`);
+  }
+  if (aggregates.mostActiveMonth?.month) {
+    narrativeLines.push(`Your most active month was ${aggregates.mostActiveMonth.month}.`);
+  }
+  if (weeklyMostActive?.weekday) {
+    const label = weekdayMostLabel(weeklyMostActive.weekday);
+    narrativeLines.push(`You tend to read most often on ${label}s.`);
+  }
+  if (!narrativeLines.length) {
+    narrativeLines.push("Complete a few readings to reveal your patterns.");
+  }
 
-    return phrases;
-  }, [safeMonthly, safeWeekly, totalYearReadings]);
+  const firstRecorded = aggregates.monthlyActivity.find((item) => (item?.readings || 0) > 0);
 
+  const milestones = {
+    firstMonth: firstRecorded?.month || "-",
+    longestStreak: streaks.longest || 0,
+    mostActiveMonth: aggregates.mostActiveMonth?.month || "-",
+    lifetimeReadings: aggregates.totalReadings,
+  };
+
+  const summary = {
+    totalReadings: aggregates.totalReadings,
+    distinctHexagrams: aggregates.distinctHexagrams,
+    mostDrawn: aggregates.mostDrawn,
+    streak: streaks.current,
+  };
+
+  const cadence = aggregates.cadence;
+
+  return {
+    hexagrams,
+    loading: journalLoading || hexagramsLoading,
+    warning,
+    summary,
+    cadence,
+    narrativeLines,
+    topHexagrams,
+    monthlyActivity: aggregates.monthlyActivity,
+    milestones,
+    weeklyPattern: aggregates.weeklyPattern,
+  };
+}
+
+function SummaryMetricCard({ title, subtitle, value, loading, delay = 0 }) {
+  const displayValue = useAnimatedCounter(value, loading);
   return (
-    <View style={stylesInsights.chartCard}>
-      <Text style={stylesInsights.sectionTitle}>Your Reading Patterns</Text>
+    <MotionView style={[stylesInsights.card, stylesInsights.summaryCard]} {...motionProps(delay)}>
+      <Text style={stylesInsights.cardTitle}>{title}</Text>
+      {subtitle ? <Text style={stylesInsights.cardSubtitle}>{subtitle}</Text> : null}
       {loading ? (
-        <View style={stylesInsights.paragraphStack}>
-          <ShimmerPlaceholder height={18} style={stylesInsights.paragraphShimmer} />
-          <ShimmerPlaceholder height={18} style={stylesInsights.paragraphShimmer} />
-          <ShimmerPlaceholder height={18} style={stylesInsights.paragraphShimmer} />
-        </View>
+        <ShimmerPlaceholder height={32} style={stylesInsights.shimmerLarge} />
       ) : (
-        insights.map((line, index) => (
-          <Text key={`insight-line-${index}`} style={stylesInsights.paragraphText}>
-            {line}
-          </Text>
-        ))
+        <Text style={stylesInsights.metricValue}>{value == null ? "-" : displayValue}</Text>
       )}
-    </View>
+    </MotionView>
   );
 }
 
-function TopHexagramsTextList({ data, loading, hexagrams }) {
-  const safeData = Array.isArray(data) ? data : [];
-
-  const topFive = useMemo(() => {
-    if (!safeData.length) return [];
-    return safeData
-      .filter((item) => item?.hexagram_primary != null)
-      .map((item) => ({
-        number: Number(item.hexagram_primary),
-        total: Number(item.total_casts) || 0,
-      }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 5);
-  }, [safeData]);
-
-  const lookupName = useCallback(
-    (number) => getHexagramNameByNumber(hexagrams, number) || "Unknown",
-    [hexagrams]
-  );
-
+function CadenceCard({ cadence, loading }) {
+  const items = [
+    { label: "Today", value: cadence.today },
+    { label: "This week", value: cadence.week },
+    { label: "This month", value: cadence.month },
+    { label: "This year", value: cadence.year },
+    { label: "Total", value: cadence.total },
+  ];
   return (
-    <View style={stylesInsights.chartCard}>
-      <Text style={stylesInsights.sectionTitle}>Top Hexagrams</Text>
+    <MotionView style={stylesInsights.card} {...motionProps(80)}>
+      <Text style={stylesInsights.cardTitle}>Reading cadence</Text>
+      {items.map((item, index) => {
+        const displayValue = useAnimatedCounter(item.value, loading);
+        return (
+          <View
+            key={item.label}
+            style={[stylesInsights.rowBetween, index !== items.length - 1 && stylesInsights.rowDivider]}
+          >
+            <Text style={stylesInsights.rowLabel}>{item.label}</Text>
+            {loading ? (
+              <ShimmerPlaceholder height={16} style={stylesInsights.shimmerSmall} />
+            ) : (
+              <Text style={stylesInsights.rowValue}>{displayValue}</Text>
+            )}
+          </View>
+        );
+      })}
+    </MotionView>
+  );
+}
+
+function NarrativeCard({ lines, loading }) {
+  return (
+    <MotionView style={stylesInsights.card} {...motionProps(120)}>
+      <Text style={stylesInsights.cardTitle}>Your Reading Patterns</Text>
+      <View style={stylesInsights.paragraphStack}>
+        {loading
+          ? [0, 1, 2].map((index) => (
+              <ShimmerPlaceholder
+                key={`narrative-${index}`}
+                height={18}
+                style={stylesInsights.paragraphShimmer}
+              />
+            ))
+          : lines.map((line, index) => (
+              <Text key={`pattern-${index}`} style={stylesInsights.paragraphText}>
+                {line}
+              </Text>
+            ))}
+      </View>
+    </MotionView>
+  );
+}
+
+function TopHexagramsCard({ data, loading }) {
+  return (
+    <MotionView style={stylesInsights.card} {...motionProps(160)}>
+      <Text style={stylesInsights.cardTitle}>Top Hexagrams</Text>
       {loading ? (
         <View>
-          {[...Array(3)].map((_, index) => (
-            <ShimmerPlaceholder
-              key={`hexagram-shimmer-${index}`}
-              height={18}
-              style={stylesInsights.listShimmer}
-            />
+          {[0, 1, 2, 3, 4].map((index) => (
+            <ShimmerPlaceholder key={`top-${index}`} height={18} style={stylesInsights.listShimmer} />
           ))}
         </View>
-      ) : topFive.length ? (
+      ) : data.length ? (
         <View style={stylesInsights.listContainer}>
-          {topFive.map((item, index) => (
-            <View key={`top-hex-${item.number}-${index}`} style={stylesInsights.listRow}>
+          {data.map((item, index) => (
+            <View key={`${item.number}-${index}`} style={stylesInsights.listRow}>
               <Text style={stylesInsights.listIndex}>{index + 1}.</Text>
               <View style={stylesInsights.listContent}>
                 <Text style={stylesInsights.listLabel}>
-                  Hexagram {item.number} — {lookupName(item.number)}
+                  {`Hexagram ${item.number}`}
+                  {item.name ? ` — ${item.name}` : ""}
                 </Text>
                 <Text style={stylesInsights.listValue}>{formatCount(item.total, "time")}</Text>
               </View>
@@ -1367,459 +1181,181 @@ function TopHexagramsTextList({ data, loading, hexagrams }) {
           ))}
         </View>
       ) : (
-        <Text style={stylesInsights.chartEmptyText}>
-          Begin casting to see which hexagrams appear most often.
-        </Text>
+        <Text style={stylesInsights.emptyText}>No readings yet. Your top hexagrams will appear here.</Text>
       )}
-    </View>
+    </MotionView>
   );
 }
 
-function MonthlyActivityRow({ data, loading }) {
-  const safeData = Array.isArray(data) ? data : [];
-
+function MonthlyActivityCard({ data, loading }) {
   return (
-    <View style={stylesInsights.chartCard}>
-      <Text style={stylesInsights.sectionTitle}>Monthly Activity (Past Year)</Text>
-      <ScrollView
+    <MotionView style={stylesInsights.card} {...motionProps(200)}>
+      <Text style={stylesInsights.cardTitle}>Monthly Activity (Past Year)</Text>
+      <FlatList
+        data={data}
+        keyExtractor={(item) => item.key}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={stylesInsights.monthScroller}
-      >
-        {loading
-          ? MONTH_KEYS.map((month) => (
-            <ShimmerPlaceholder
-              key={`month-${month}`}
-              height={36}
-              style={stylesInsights.monthBadgeShimmer}
-            />
-          ))
-          : safeData.map((item) => (
-              <View key={`month-pill-${item.month}`} style={stylesInsights.monthBadge}>
-                <Text style={stylesInsights.monthLabel}>{item.month}</Text>
-                <View style={stylesInsights.monthPill}>
-                  <Text style={stylesInsights.monthValue}>{item.readings || 0}</Text>
-                </View>
+        renderItem={({ item }) =>
+          loading ? (
+            <ShimmerPlaceholder height={38} style={stylesInsights.monthShimmer} />
+          ) : (
+            <View style={stylesInsights.monthBadge}>
+              <Text style={stylesInsights.monthLabel}>{item.month}</Text>
+              <View style={stylesInsights.monthPill}>
+                <Text style={stylesInsights.monthValue}>{item.readings || 0}</Text>
               </View>
-            ))}
-      </ScrollView>
-    </View>
+            </View>
+          )
+        }
+      />
+    </MotionView>
   );
 }
 
-function MilestonesCard({ streak, summary, monthlyData, loading }) {
-  const mostActiveMonth = useMemo(() => {
-    return (monthlyData || []).reduce(
-      (acc, entry) => {
-        if ((entry?.readings || 0) > (acc?.readings || 0)) return entry;
-        return acc;
-      },
-      { month: null, readings: 0 }
-    );
-  }, [monthlyData]);
-
-  const firstActiveMonth = useMemo(() => {
-    return (monthlyData || []).find((entry) => (entry?.readings || 0) > 0) || null;
-  }, [monthlyData]);
-
-  const lifetimeReadings = summary?.total_readings || 0;
-
-  const milestoneItems = [
-    {
-      icon: "📘",
-      label: "First recorded reading",
-      value: firstActiveMonth
-        ? `${MONTH_FULL_NAMES[firstActiveMonth.month] || firstActiveMonth.month}`
-        : "Not yet recorded",
-    },
-    {
-      icon: "🔥",
-      label: "Longest streak",
-      value: streak ? `${streak} days` : "Not started",
-    },
-    {
-      icon: "⭐",
-      label: "Most active month",
-      value:
-        mostActiveMonth?.month && mostActiveMonth.readings > 0
-          ? `${MONTH_FULL_NAMES[mostActiveMonth.month] || mostActiveMonth.month}`
-          : "—",
-    },
-    {
-      icon: "🌕",
-      label: "Lifetime readings",
-      value: lifetimeReadings.toString(),
-    },
+function MilestonesCard({ milestones, loading }) {
+  const items = [
+    { icon: "📘", label: "First recorded reading", value: milestones.firstMonth || "-" },
+    { icon: "🔥", label: "Longest streak", value: milestones.longestStreak ? `${milestones.longestStreak} days` : "Not started" },
+    { icon: "⭐", label: "Most active month", value: milestones.mostActiveMonth || "-" },
+    { icon: "🌕", label: "Lifetime readings", value: milestones.lifetimeReadings || 0 },
   ];
 
   return (
-    <View style={stylesInsights.chartCard}>
-      <Text style={stylesInsights.sectionTitle}>Milestones</Text>
-      {loading ? (
-        <View style={stylesInsights.milestoneGrid}>
-          {[...Array(4)].map((_, index) => (
-            <ShimmerPlaceholder
-              key={`milestone-shimmer-${index}`}
-              height={48}
-              style={stylesInsights.milestoneShimmer}
-            />
-          ))}
-        </View>
-      ) : (
-        <View style={stylesInsights.milestoneGrid}>
-          {milestoneItems.map((item) => (
-            <View key={item.label} style={stylesInsights.milestoneBadge}>
-              <Text style={stylesInsights.milestoneIcon}>{item.icon}</Text>
-              <View style={stylesInsights.milestoneTextGroup}>
-                <Text style={stylesInsights.milestoneLabel}>{item.label}</Text>
-                <Text style={stylesInsights.milestoneValue}>{item.value}</Text>
+    <MotionView style={stylesInsights.card} {...motionProps(240)}>
+      <Text style={stylesInsights.cardTitle}>Milestones</Text>
+      <View style={stylesInsights.milestoneGrid}>
+        {loading
+          ? [0, 1, 2, 3].map((index) => (
+              <ShimmerPlaceholder
+                key={`milestone-${index}`}
+                height={60}
+                style={stylesInsights.milestoneShimmer}
+              />
+            ))
+          : items.map((item) => (
+              <View key={item.label} style={stylesInsights.milestoneBadge}>
+                <Text style={stylesInsights.milestoneIcon}>{item.icon}</Text>
+                <View style={stylesInsights.milestoneTextGroup}>
+                  <Text style={stylesInsights.milestoneLabel}>{item.label}</Text>
+                  <Text style={stylesInsights.milestoneValue}>{item.value}</Text>
+                </View>
               </View>
-            </View>
-          ))}
-        </View>
-      )}
-    </View>
+            ))}
+      </View>
+    </MotionView>
   );
 }
 
 function InsightsOverviewScreen({ navigation }) {
-  const { isPremium } = useAuth();
-  const premiumMember = Boolean(isPremium);
-  const { premiumPriceString } = useRevenueCat();
+  const { width } = useWindowDimensions();
+  const { isPremium: premiumMember } = useAuth();
+  const { visible, closeGuidance } = useGuidanceOnce("hasSeenGuidance_Insights");
+
   const {
-    data: summary,
-    loading: summaryLoading,
-    error: summaryError,
-    refetch: refetchSummary,
-  } = useInsightsSummary();
-  const {
-    data: counts,
-    loading: countsLoading,
-    error: countsError,
-    refetch: refetchCounts,
-  } = useInsightsCounts();
-  const {
-    data: streak,
-    loading: streakLoading,
-    error: streakError,
-    refetch: refetchStreak,
-  } = useReadingStreak();
-  const {
-    data: weeklyData,
-    loading: weeklyLoading,
-    error: weeklyError,
-    refetch: refetchWeekly,
-  } = useInsightsWeekly();
-  const {
-    data: monthlyData,
-    loading: monthlyLoading,
-    error: monthlyError,
-    refetch: refetchMonthly,
-  } = useInsightsMonthly();
-  const {
-    data: topCastsData,
-    loading: topCastsLoading,
-    error: topCastsError,
-    refetch: refetchTopCasts,
-  } = useInsightsTopCasts();
+    summary,
+    cadence,
+    narrativeLines,
+    topHexagrams,
+    monthlyActivity,
+    milestones,
+    loading,
+    warning,
+  } = useInsightsData();
 
-  const [hexagrams, setHexagrams] = useState([]);
-  const [errorMessage, setErrorMessage] = useState(null);
-  const isFocused = useIsFocused();
-  const {
-    visible: guidanceVisible,
-    hasSeenGuidance,
-    openGuidance,
-    closeGuidance,
-    hasLoaded: guidanceLoaded,
-  } = useGuidanceOnce("hasSeenGuidance_Insights");
-
-  const handleGuidanceLearnMore = useCallback(() => {
-    closeGuidance();
-    navigation?.navigate("Guide");
-  }, [closeGuidance, navigation]);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (guidanceLoaded && !hasSeenGuidance && !guidanceVisible) {
-        openGuidance();
-      }
-    }, [guidanceLoaded, guidanceVisible, hasSeenGuidance, openGuidance])
-  );
-
-  useEffect(() => {
-    if (isFocused && guidanceLoaded && !hasSeenGuidance && !guidanceVisible) {
-      openGuidance();
-    }
-  }, [guidanceLoaded, guidanceVisible, hasSeenGuidance, isFocused, openGuidance]);
-
-  useEffect(() => {
-    let active = true;
-    if (!premiumMember) {
-      return () => {
-        active = false;
-      };
-    }
-    loadHexagrams().then((rows) => {
-      if (!active) return;
-      const ordered = [...rows].sort((a, b) => (a.number || 0) - (b.number || 0));
-      setHexagrams(ordered);
-    });
-    return () => {
-      active = false;
-    };
-  }, [premiumMember]);
-
-  const mostDrawnName = useMemo(() => {
-    if (!summary?.most_drawn_hexagram) return "";
-    return getHexagramNameByNumber(hexagrams, summary.most_drawn_hexagram) || "Unknown";
-  }, [hexagrams, summary?.most_drawn_hexagram]);
-
-  const totalYearReadings = useMemo(
-    () => (monthlyData || []).reduce((sum, entry) => sum + (entry?.readings || 0), 0),
-    [monthlyData]
-  );
-
-  const refetchAll = useCallback(() => {
-    refetchSummary();
-    refetchCounts();
-    refetchStreak();
-    refetchWeekly();
-    refetchMonthly();
-    refetchTopCasts();
-  }, [
-    refetchCounts,
-    refetchMonthly,
-    refetchStreak,
-    refetchSummary,
-    refetchTopCasts,
-    refetchWeekly,
-  ]);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (!premiumMember) return;
-      refetchAll();
-    }, [refetchAll, premiumMember])
-  );
-
-  useEffect(() => {
-    let channel;
-    let mounted = true;
-    (async () => {
-      if (!premiumMember) return;
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!mounted || !user) return;
-      channel = supabase
-        .channel("insights-overview")
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "JournalEntries",
-            filter: `user_id=eq.${user.id}`,
-          },
-          () => {
-            refetchAll();
-          }
-        )
-        .subscribe();
-    })();
-    return () => {
-      mounted = false;
-      if (channel) {
-        supabase.removeChannel(channel);
-      }
-    };
-  }, [premiumMember, refetchAll]);
+  const columns = width < 700 ? 1 : 2;
 
   const summaryCards = [
     {
       title: "Total Readings",
-      value: summary?.total_readings || 0,
-      loading: summaryLoading,
+      value: summary.totalReadings,
+      loading,
+      delay: 40,
     },
     {
       title: "Most-Drawn Hexagram",
-      subtitle: mostDrawnName
-        ? `Hexagram ${summary?.most_drawn_hexagram}: ${mostDrawnName}`
-        : "—",
-      value: summary?.most_drawn_hexagram || 0,
-      loading: summaryLoading,
+      subtitle: summary.mostDrawn
+        ? `Hexagram ${summary.mostDrawn.number}${summary.mostDrawn.total ? ` — ${formatCount(summary.mostDrawn.total, "time")}` : ""}`
+        : "",
+      value: summary.mostDrawn ? summary.mostDrawn.number : 0,
+      loading,
+      delay: 80,
     },
     {
       title: "Reading Streak",
       subtitle: "Consecutive days",
-      value: streak || 0,
-      loading: streakLoading,
+      value: summary.streak || 0,
+      loading,
+      delay: 120,
     },
     {
       title: "Distinct Hexagrams",
       subtitle: "Primary draws",
-      value: summary?.distinct_hexagrams || 0,
-      loading: summaryLoading,
+      value: summary.distinctHexagrams || 0,
+      loading,
+      delay: 160,
     },
   ];
 
   const summaryRows = [];
-  for (let i = 0; i < summaryCards.length; i += 2) {
-    summaryRows.push(summaryCards.slice(i, i + 2));
+  for (let i = 0; i < summaryCards.length; i += columns) {
+    summaryRows.push(summaryCards.slice(i, i + columns));
   }
 
-  useEffect(() => {
-    const activeError =
-      summaryError ||
-      countsError ||
-      streakError ||
-      weeklyError ||
-      monthlyError ||
-      topCastsError;
-    if (activeError) {
-      setErrorMessage("Showing recent data");
-    } else {
-      setErrorMessage(null);
-    }
-  }, [
-    countsError,
-    monthlyError,
-    streakError,
-    summaryError,
-    topCastsError,
-    weeklyError,
-  ]);
+  const handleGuidanceLearnMore = useCallback(() => {
+    closeGuidance();
+    navigation.navigate("Library");
+  }, [closeGuidance, navigation]);
 
-  const freeContent = (
-    <ScrollView
-      contentContainerStyle={[
-        stylesInsights.container,
-        { paddingBottom: theme.space(6) },
-      ]}
-      showsVerticalScrollIndicator={false}
-    >
+  const header = (
+    <View style={stylesInsights.header}>
       <Text style={stylesInsights.screenTitle}>Insight Overview</Text>
-      <Text style={stylesInsights.screenSubtitle}>
-        A reflective glance at your journey with the I Ching.
-      </Text>
-      <UpgradeCallout
-        title="Premium analytics"
-        description={
-          premiumPriceString
-            ? `Unlock weekly and monthly patterns, your casting streak, and the top hexagrams you draw most often. Premium is ${premiumPriceString} per month.`
-            : "Unlock weekly and monthly patterns, your casting streak, and the top hexagrams you draw most often with Premium membership."
-        }
-        icon="stats-chart-outline"
-      />
-    </ScrollView>
+      <Text style={stylesInsights.screenSubtitle}>A reflective glance at your journey with the I Ching.</Text>
+      {warning ? <Text style={stylesInsights.warningText}>{warning}</Text> : null}
+    </View>
   );
 
-  const premiumContent = (
+  const insightsContent = (
     <ScrollView
-      contentContainerStyle={[
-        stylesInsights.container,
-        { paddingBottom: theme.space(6) },
-      ]}
+      style={stylesInsights.container}
+      contentContainerStyle={{ paddingBottom: theme.space(4) }}
       showsVerticalScrollIndicator={false}
     >
-      <Text style={stylesInsights.screenTitle}>Insight Overview</Text>
-      <Text style={stylesInsights.screenSubtitle}>
-        A reflective glance at your journey with the I Ching.
-      </Text>
-      {errorMessage ? <Text style={stylesInsights.errorText}>{errorMessage}</Text> : null}
+      {header}
 
       <View style={stylesInsights.summaryGrid}>
-        {summaryRows.map((rowCards, rowIndex) => (
-          <View
-            key={`summary-row-${rowIndex}`}
-            style={[
-              stylesInsights.summaryRow,
-              rowIndex === summaryRows.length - 1 && { marginBottom: 0 },
-            ]}
-          >
-            {rowCards.map((card, columnIndex) => {
-              const cardIndex = rowIndex * 2 + columnIndex;
-              return (
-                <SummaryCard
-                  key={card.title}
-                  title={card.title}
-                  subtitle={card.subtitle}
-                  value={card.value}
-                  loading={card.loading}
-                  accent={cardIndex === 1 ? palette.goldLight : palette.gold}
-                  delay={cardIndex * 80}
-                  column={columnIndex}
-                  isSolo={rowCards.length === 1}
-                />
-              );
-            })}
+        {summaryRows.map((row, rowIndex) => (
+          <View key={`summary-row-${rowIndex}`} style={stylesInsights.summaryRow}>
+            {row.map((card, index) => (
+              <View
+                key={`summary-${card.title}`}
+                style={[
+                  stylesInsights.summaryColumn,
+                  index < row.length - 1 ? stylesInsights.summaryGap : null,
+                ]}
+              >
+                <SummaryMetricCard {...card} />
+              </View>
+            ))}
           </View>
         ))}
       </View>
 
-      <MotionView style={stylesInsights.counterCard} {...motionProps(120)}>
-        <Text style={stylesInsights.sectionTitle}>Reading cadence</Text>
-        <CounterRow
-          label="Today"
-          value={counts.readings_today}
-          loading={countsLoading}
-        />
-        <CounterRow
-          label="This week"
-          value={counts.readings_week}
-          loading={countsLoading}
-        />
-        <CounterRow
-          label="This month"
-          value={counts.readings_month}
-          loading={countsLoading}
-        />
-        <CounterRow
-          label="This year"
-          value={counts.readings_year}
-          loading={countsLoading}
-        />
-        <CounterRow
-          label="Total"
-          value={counts.readings_total}
-          loading={countsLoading}
-        />
-      </MotionView>
-
-      <MotionView style={stylesInsights.chartCard} {...motionProps(160)}>
-        <ReadingPatternsCard
-          monthlyData={monthlyData}
-          weeklyData={weeklyData}
-          totalYearReadings={totalYearReadings}
-          loading={monthlyLoading || weeklyLoading}
-        />
-      </MotionView>
-
-      <MotionView style={stylesInsights.chartCard} {...motionProps(200)}>
-        <TopHexagramsTextList
-          data={topCastsData}
-          loading={topCastsLoading}
-          hexagrams={hexagrams}
-        />
-      </MotionView>
-
-      <MotionView style={stylesInsights.chartCard} {...motionProps(240)}>
-        <MonthlyActivityRow data={monthlyData} loading={monthlyLoading} />
-      </MotionView>
-
-      <MotionView style={stylesInsights.chartCard} {...motionProps(280)}>
-        <MilestonesCard
-          streak={streak}
-          summary={summary}
-          monthlyData={monthlyData}
-          loading={summaryLoading || streakLoading || monthlyLoading}
-        />
-      </MotionView>
+      <CadenceCard cadence={cadence} loading={loading} />
+      <NarrativeCard lines={narrativeLines} loading={loading} />
+      <TopHexagramsCard data={topHexagrams} loading={loading} />
+      <MonthlyActivityCard data={monthlyActivity} loading={loading} />
+      <MilestonesCard milestones={milestones} loading={loading} />
     </ScrollView>
   );
 
-  const content = premiumMember ? premiumContent : freeContent;
+  const paywallCard = (
+    <View style={stylesInsights.paywallCard}>
+      <Text style={stylesInsights.cardTitle}>Insights are a premium feature.</Text>
+      <Text style={stylesInsights.paragraphText}>Upgrade to unlock your reading streaks, top hexagrams, and activity trends.</Text>
+    </View>
+  );
 
   return (
     <LinearGradient
@@ -1829,9 +1365,18 @@ function InsightsOverviewScreen({ navigation }) {
       style={stylesInsights.gradient}
     >
       <SafeAreaView style={{ flex: 1 }}>
-        {content}
+        {premiumMember ? insightsContent : (
+          <ScrollView
+            style={stylesInsights.container}
+            contentContainerStyle={{ paddingBottom: theme.space(4) }}
+            showsVerticalScrollIndicator={false}
+          >
+            {header}
+            {paywallCard}
+          </ScrollView>
+        )}
         <SimpleGuidanceModal
-          visible={guidanceVisible}
+          visible={visible}
           onClose={closeGuidance}
           onLearnMore={handleGuidanceLearnMore}
           text={GUIDANCE_MESSAGES.Insights}
@@ -1842,196 +1387,56 @@ function InsightsOverviewScreen({ navigation }) {
 }
 
 const stylesInsights = StyleSheet.create({
-  gradient: {
-    flex: 1,
-  },
-  container: {
-    padding: theme.space(3),
-    paddingTop: theme.space(5) + screenTopPadding,
-  },
-  screenTitle: {
-    fontFamily: fonts.title,
-    fontSize: 30,
-    color: palette.ink,
-    marginTop: theme.space(0.5),
-  },
-  screenSubtitle: {
-    fontFamily: fonts.body,
-    color: palette.inkMuted,
-    marginTop: theme.space(0.5),
-    marginBottom: theme.space(3),
-  },
-  errorText: {
-    fontFamily: fonts.body,
-    color: palette.goldDeep,
-    marginBottom: theme.space(2),
-  },
-  summaryGrid: {
-    marginBottom: theme.space(3),
-  },
-  summaryRow: {
-    flexDirection: "row",
-    alignItems: "stretch",
-    marginBottom: theme.space(2),
-  },
-  summaryCard: {
-    flex: 1,
-    minWidth: 150,
-    padding: theme.space(2),
-    minHeight: 150,
+  gradient: { flex: 1 },
+  container: { padding: theme.space(3), paddingTop: screenTopPadding + theme.space(2) },
+  header: { marginBottom: theme.space(2) },
+  screenTitle: { fontFamily: fonts.title, fontSize: 30, color: palette.ink },
+  screenSubtitle: { fontFamily: fonts.body, color: palette.inkMuted, marginTop: theme.space(0.5) },
+  warningText: { fontFamily: fonts.body, color: palette.goldDeep, marginTop: theme.space(0.5) },
+  summaryGrid: { marginTop: theme.space(2), marginBottom: theme.space(3) },
+  summaryRow: { flexDirection: "row", marginBottom: theme.space(1.5) },
+  summaryColumn: { flex: 1 },
+  summaryGap: { marginRight: theme.space(1.5) },
+  card: {
+    backgroundColor: palette.card,
     borderRadius: theme.radius,
     borderWidth: 1,
-    backgroundColor: palette.card,
+    borderColor: palette.border,
+    padding: theme.space(2),
     shadowColor: palette.goldDeep,
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.1,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
     elevation: 3,
-    justifyContent: "space-between",
+    marginBottom: theme.space(2),
   },
-  summaryCardLeft: {
-    marginRight: theme.space(1),
-  },
-  summaryCardRight: {
-    marginLeft: theme.space(1),
-  },
-  summaryCardSolo: {
-    marginLeft: 0,
-    marginRight: 0,
-  },
-  summaryLabel: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 16,
-    color: palette.ink,
-  },
-  summarySubtitle: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    color: palette.inkMuted,
-    marginTop: 4,
-  },
-  summaryHeader: {
-    minHeight: 52,
-    justifyContent: "flex-start",
-  },
-  summaryValue: {
-    fontFamily: fonts.title,
-    fontSize: 32,
-    color: palette.ink,
-    marginTop: theme.space(1),
-  },
-  summaryPlaceholder: {
-    marginTop: theme.space(1),
-  },
-  summaryValuePlaceholder: {
-    alignSelf: "flex-start",
-  },
-  counterCard: {
-    backgroundColor: palette.card,
-    borderRadius: theme.radius,
-    borderWidth: 1,
-    borderColor: palette.border,
-    padding: theme.space(2),
-    marginBottom: theme.space(3),
-    shadowColor: palette.goldDeep,
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-  },
-  sectionTitle: {
-    fontFamily: fonts.title,
-    fontSize: 20,
-    color: palette.ink,
-    marginBottom: theme.space(1.5),
-  },
-  sectionCaption: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    color: palette.inkMuted,
-    marginTop: -theme.space(0.75),
-    marginBottom: theme.space(1.5),
-  },
-  counterRow: {
+  summaryCard: { minHeight: 130 },
+  cardTitle: { fontFamily: fonts.title, fontSize: 20, color: palette.ink },
+  cardSubtitle: { fontFamily: fonts.body, color: palette.inkMuted, marginTop: 4 },
+  metricValue: { fontFamily: fonts.title, fontSize: 34, color: palette.ink, marginTop: theme.space(1.5) },
+  shimmerLarge: { marginTop: theme.space(1.5), borderRadius: 10 },
+  shimmerSmall: { width: 40, borderRadius: 6 },
+  rowBetween: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.border,
-  },
-  counterLabel: {
-    fontFamily: fonts.body,
-    fontSize: 15,
-    color: palette.ink,
-  },
-  counterValue: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 16,
-    color: palette.goldDeep,
-  },
-  counterPlaceholder: {
-    width: 48,
-  },
-  chartCard: {
-    backgroundColor: palette.card,
-    borderRadius: theme.radius,
-    borderWidth: 1,
-    borderColor: palette.border,
-    padding: theme.space(2),
-    marginBottom: theme.space(3),
-    shadowColor: palette.goldDeep,
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-  },
-  paragraphStack: {
-    gap: theme.space(1),
-  },
-  paragraphShimmer: {
-    marginBottom: theme.space(0.5),
-    borderRadius: 8,
-  },
-  paragraphText: {
-    fontFamily: fonts.body,
-    fontSize: 15,
-    color: palette.ink,
-    lineHeight: 22,
-    marginBottom: theme.space(0.5),
-  },
-  listContainer: {
-    marginTop: theme.space(1),
-  },
-  listRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
+    justifyContent: "space-between",
     paddingVertical: theme.space(0.75),
   },
-  listIndex: {
-    fontFamily: fonts.bodyBold,
-    color: palette.ink,
-    marginRight: theme.space(1),
-  },
-  listContent: {
-    flex: 1,
-  },
-  listLabel: {
-    fontFamily: fonts.body,
-    fontSize: 15,
-    color: palette.ink,
-  },
-  listValue: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 14,
-    color: palette.goldDeep,
-    marginTop: 2,
-  },
-  listShimmer: {
-    marginBottom: theme.space(1),
-    borderRadius: 8,
-  },
-  monthScroller: {
-    paddingVertical: theme.space(0.5),
-  },
+  rowDivider: { borderBottomWidth: 1, borderBottomColor: palette.border },
+  rowLabel: { fontFamily: fonts.body, color: palette.ink },
+  rowValue: { fontFamily: fonts.bodyBold, color: palette.goldDeep },
+  paragraphStack: { gap: theme.space(1), marginTop: theme.space(0.5) },
+  paragraphShimmer: { borderRadius: 8 },
+  paragraphText: { fontFamily: fonts.body, fontSize: 15, color: palette.ink, lineHeight: 22 },
+  listContainer: { marginTop: theme.space(1) },
+  listRow: { flexDirection: "row", alignItems: "flex-start", paddingVertical: theme.space(0.75) },
+  listIndex: { fontFamily: fonts.bodyBold, color: palette.ink, marginRight: theme.space(1) },
+  listContent: { flex: 1 },
+  listLabel: { fontFamily: fonts.body, fontSize: 15, color: palette.ink },
+  listValue: { fontFamily: fonts.bodyBold, fontSize: 14, color: palette.goldDeep, marginTop: 2 },
+  listShimmer: { marginBottom: theme.space(1), borderRadius: 8 },
+  emptyText: { fontFamily: fonts.body, color: palette.inkMuted },
+  monthScroller: { paddingVertical: theme.space(0.5) },
   monthBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -2047,31 +1452,11 @@ const stylesInsights = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
   },
-  monthLabel: {
-    fontFamily: fonts.bodyBold,
-    color: palette.ink,
-    marginRight: theme.space(0.75),
-  },
-  monthPill: {
-    backgroundColor: palette.goldLight,
-    borderRadius: 12,
-    paddingHorizontal: theme.space(1),
-    paddingVertical: 4,
-  },
-  monthValue: {
-    fontFamily: fonts.bodyBold,
-    color: palette.goldDeep,
-  },
-  monthBadgeShimmer: {
-    width: 70,
-    borderRadius: 14,
-    marginRight: theme.space(1),
-  },
-  milestoneGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: theme.space(1),
-  },
+  monthLabel: { fontFamily: fonts.bodyBold, color: palette.ink, marginRight: theme.space(0.75) },
+  monthPill: { backgroundColor: palette.goldLight, borderRadius: 12, paddingHorizontal: theme.space(1), paddingVertical: 4 },
+  monthValue: { fontFamily: fonts.bodyBold, color: palette.goldDeep },
+  monthShimmer: { width: 74, borderRadius: 14, marginRight: theme.space(1) },
+  milestoneGrid: { flexDirection: "row", flexWrap: "wrap", gap: theme.space(1) },
   milestoneBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -2084,35 +1469,24 @@ const stylesInsights = StyleSheet.create({
     minWidth: 150,
     flex: 1,
   },
-  milestoneIcon: {
-    fontSize: 18,
-    marginRight: theme.space(1),
-  },
-  milestoneTextGroup: {
-    flex: 1,
-  },
-  milestoneLabel: {
-    fontFamily: fonts.body,
-    color: palette.inkMuted,
-    fontSize: 13,
-  },
-  milestoneValue: {
-    fontFamily: fonts.bodyBold,
-    color: palette.ink,
-    fontSize: 15,
-    marginTop: 2,
-  },
-  milestoneShimmer: {
-    borderRadius: 12,
-    marginBottom: theme.space(1),
-  },
-  chartEmptyText: {
-    fontFamily: fonts.body,
-    fontSize: 14,
-    color: palette.inkMuted,
+  milestoneIcon: { fontSize: 18, marginRight: theme.space(1) },
+  milestoneTextGroup: { flex: 1 },
+  milestoneLabel: { fontFamily: fonts.body, color: palette.inkMuted, fontSize: 13 },
+  milestoneValue: { fontFamily: fonts.bodyBold, color: palette.ink, fontSize: 15, marginTop: 2 },
+  milestoneShimmer: { borderRadius: 12, minWidth: 150 },
+  paywallCard: {
+    backgroundColor: palette.card,
+    borderRadius: theme.radius,
+    borderWidth: 1,
+    borderColor: palette.border,
+    padding: theme.space(2),
+    shadowColor: palette.goldDeep,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
 });
-
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 const JournalStack = createNativeStackNavigator();
