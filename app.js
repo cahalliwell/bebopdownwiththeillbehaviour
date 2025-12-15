@@ -5964,7 +5964,6 @@ function PremiumScreen({ navigation }) {
     { label: "Journal & secure storage", core: true, premium: true },
     { label: "AI oracle summaries (100/mo)", core: false, premium: true },
     { label: "Manual casting rituals", core: false, premium: true },
-    { label: "Advanced insights & charts", core: false, premium: true },
     { label: "Cloud sync up to 1,000 entries", core: false, premium: true },
   ];
 
@@ -6052,7 +6051,7 @@ function PremiumScreen({ navigation }) {
                 <Text style={stylesPremium.price}>{premiumPriceLabel}</Text>
                 <Text style={stylesPremium.priceSub}>Per month</Text>
                 <Text style={stylesPremium.tierBody}>
-                  Unlock AI summaries, manual casting, cloud backup, and rich analytics.
+                  Unlock AI summaries, manual casting, and secure cloud backup.
                 </Text>
                 {isPremiumMember ? (
                   <View style={stylesPremium.badge}>
@@ -6652,7 +6651,6 @@ function MainTabs() {
             Home: "home-outline",
             Library: "bookmarks-outline",
             Journal: "create-outline",
-            Insights: "stats-chart-outline",
           };
           return <Ionicons name={icons[route.name]} size={size} color={color} />;
         },
@@ -6661,7 +6659,6 @@ function MainTabs() {
       <Tab.Screen name="Home" component={HomeStack} />
       <Tab.Screen name="Journal" component={JournalStackScreen} />
       <Tab.Screen name="Library" component={LibraryScreen} />
-      <Tab.Screen name="Insights" component={InsightsOverviewScreen} />
     </Tab.Navigator>
   );
 }
