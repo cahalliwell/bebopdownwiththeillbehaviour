@@ -6756,6 +6756,25 @@ export default function App() {
       if (!isResetLink && !isAuthCallbackLink) return;
 
       try {
+        const parsed = new URL(url);
+        const hash = parsed.hash?.startsWith("#") ? parsed.hash.slice(1) : parsed.hash || "";
+        const fragmentParams = new URLSearchParams(hash);
+        const recoveryAccessToken = fragmentParams.get("access_token");
+        const recoveryRefreshToken = fragmentParams.get("refresh_token");
+        const recoveryType = fragmentParams.get("type");
+
+        if (recoveryAccessToken && recoveryRefreshToken && recoveryType === "recovery") {
+          const { data, error } = await supabase.auth.setSession({
+            access_token: recoveryAccessToken,
+            refresh_token: recoveryRefreshToken,
+          });
+          if (error || !data?.session) {
+            throw error || new Error("No session returned from recovery link");
+          }
+          beginPasswordResetFlow();
+          return;
+        }
+
         const hasCode = url.includes("code=");
         const hasAccessToken = url.includes("access_token=");
 
