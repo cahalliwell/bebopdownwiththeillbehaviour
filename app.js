@@ -6756,8 +6756,22 @@ export default function App() {
       if (!isResetLink && !isAuthCallbackLink) return;
 
       try {
-        const { error } = await supabase.auth.exchangeCodeForSession(url);
-        if (error) throw error;
+        const hasCode = url.includes("code=");
+        const hasAccessToken = url.includes("access_token=");
+
+        let authError = null;
+
+        if (hasCode) {
+          const { error } = await supabase.auth.exchangeCodeForSession(url);
+          authError = error || null;
+        } else if (hasAccessToken) {
+          const { error } = await supabase.auth.getSessionFromUrl({ url, storeSession: true });
+          authError = error || null;
+        } else {
+          authError = new Error("No auth credentials found in URL");
+        }
+
+        if (authError) throw authError;
         if (isResetLink) {
           beginPasswordResetFlow();
         }
