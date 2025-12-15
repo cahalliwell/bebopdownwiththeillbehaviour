@@ -6756,12 +6756,16 @@ export default function App() {
       if (!isResetLink && !isAuthCallbackLink) return;
 
       try {
-        const parsed = new URL(url);
-        const hash = parsed.hash?.startsWith("#") ? parsed.hash.slice(1) : parsed.hash || "";
-        const fragmentParams = new URLSearchParams(hash);
-        const recoveryAccessToken = fragmentParams.get("access_token");
-        const recoveryRefreshToken = fragmentParams.get("refresh_token");
-        const recoveryType = fragmentParams.get("type");
+        const [basePart, hashPart = ""] = url.split("#");
+        const queryPart = basePart.split("?")[1] || "";
+        const fragmentParams = new URLSearchParams(hashPart);
+        const queryParams = new URLSearchParams(queryPart);
+
+        const recoveryAccessToken =
+          fragmentParams.get("access_token") || queryParams.get("access_token");
+        const recoveryRefreshToken =
+          fragmentParams.get("refresh_token") || queryParams.get("refresh_token");
+        const recoveryType = fragmentParams.get("type") || queryParams.get("type");
 
         if (recoveryAccessToken && recoveryRefreshToken && recoveryType === "recovery") {
           const { data, error } = await supabase.auth.setSession({
@@ -6775,8 +6779,8 @@ export default function App() {
           return;
         }
 
-        const hasCode = url.includes("code=");
-        const hasAccessToken = url.includes("access_token=");
+        const hasCode = fragmentParams.has("code") || queryParams.has("code");
+        const hasAccessToken = fragmentParams.has("access_token") || queryParams.has("access_token");
 
         let authError = null;
 
