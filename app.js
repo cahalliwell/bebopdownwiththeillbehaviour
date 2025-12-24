@@ -2789,6 +2789,13 @@ function ResetPasswordScreen() {
   const { session } = useAuth();
 
   const handleReset = useCallback(async () => {
+    if (!session) {
+      Alert.alert(
+        "Password reset",
+        "Open the reset link from your email before setting a new password."
+      );
+      return;
+    }
     const trimmed = newPassword.trim();
     const confirm = confirmPassword.trim();
     if (!trimmed || !confirm) {
@@ -2825,7 +2832,13 @@ function ResetPasswordScreen() {
     } finally {
       setSubmitting(false);
     }
-  }, [confirmPassword, completePasswordResetFlow, navigation, newPassword]);
+  }, [
+    confirmPassword,
+    completePasswordResetFlow,
+    navigation,
+    newPassword,
+    session,
+  ]);
 
   const handleCancel = useCallback(async () => {
     completePasswordResetFlow();
@@ -6770,29 +6783,13 @@ export default function App() {
       const isAuthCallbackLink = url.includes("auth/callback");
       if (!isResetLink && !isAuthCallbackLink) return;
 
-      const [basePart, hashPart = ""] = url.split("#");
-      const queryPart = basePart.split("?")[1] || "";
-      const fragmentParams = new URLSearchParams(hashPart);
-      const queryParams = new URLSearchParams(queryPart);
-      const linkType = fragmentParams.get("type") || queryParams.get("type");
-
       try {
         if (isResetLink) {
-          if (linkType && linkType !== "recovery") {
-            return;
-          }
-
-          const { data, error } = await supabase.auth.getSessionFromUrl({
-            url,
-            storeSession: true,
-          });
-          if (error || !data?.session) {
-            throw error || new Error("No session returned from reset link");
-          }
           beginPasswordResetFlow();
           return;
         }
 
+        console.log("🔗 Handling auth callback link:", url);
         const { error } = await supabase.auth.getSessionFromUrl({ url, storeSession: true });
         if (error) throw error;
       } catch (error) {
@@ -6811,10 +6808,36 @@ export default function App() {
   );
 
   useEffect(() => {
+    const sub = Linking.addEventListener("url", async ({ url }) => {
+      if (url.includes("/auth/reset")) {
+        console.log("🔗 Incoming reset link:", url);
+        const { error } = await supabase.auth.getSessionFromUrl({ url });
+
+        if (error) {
+          console.log("❌ Supabase password recovery failed:", error.message);
+        } else {
+          console.log("✅ Supabase password recovery session established");
+          beginPasswordResetFlow();
+        }
+      }
+
+      await handleAuthLink(url);
+    });
+
     const resolveInitialUrl = async () => {
       try {
         const initialUrl = await ExpoLinking.getInitialURL();
         if (initialUrl) {
+          console.log("🔗 Initial link:", initialUrl);
+          if (initialUrl.includes("/auth/reset")) {
+            const { error } = await supabase.auth.getSessionFromUrl({ url: initialUrl });
+            if (error) {
+              console.log("❌ Supabase password recovery failed:", error.message);
+            } else {
+              console.log("✅ Supabase password recovery session established");
+              beginPasswordResetFlow();
+            }
+          }
           await handleAuthLink(initialUrl);
         }
       } catch (error) {
@@ -6824,12 +6847,8 @@ export default function App() {
 
     resolveInitialUrl();
 
-    const subscription = ExpoLinking.addEventListener("url", ({ url }) => {
-      handleAuthLink(url);
-    });
-
-    return () => subscription.remove();
-  }, [handleAuthLink]);
+    return () => sub.remove();
+  }, [beginPasswordResetFlow, handleAuthLink]);
 
   useEffect(() => {
     if (!authReady) return;
