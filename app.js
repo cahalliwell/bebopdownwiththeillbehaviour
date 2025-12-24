@@ -28,7 +28,8 @@ import {
   Share,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { 
+import * as ExpoLinking from "expo-linking";
+import {
   CommonActions,
   DefaultTheme,
   NavigationContainer,
@@ -2688,8 +2689,13 @@ function ForgotPasswordScreen() {
       Alert.alert("Missing email", "Please enter the email linked to your account.");
       return;
     }
+    if (!trimmed.includes("@")) {
+      Alert.alert("Invalid email", "Please enter a valid email address.");
+      return;
+    }
     setSubmitting(true);
     try {
+      // OAuth / social accounts cannot reset passwords; Supabase only supports email/password here.
       const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
         redirectTo: "ichinginsightsai://auth/reset",
       });
@@ -6586,6 +6592,15 @@ const navTheme = {
   colors: { ...DefaultTheme.colors, background: "transparent" },
 };
 
+const linkingConfig = {
+  prefixes: ["ichinginsightsai://"],
+  config: {
+    screens: {
+      ResetPassword: "auth/reset",
+    },
+  },
+};
+
 function AuthStackScreen({ passwordResetRequested = false }) {
   return (
     <AuthStack.Navigator
@@ -6755,49 +6770,31 @@ export default function App() {
       const isAuthCallbackLink = url.includes("auth/callback");
       if (!isResetLink && !isAuthCallbackLink) return;
 
+      const [basePart, hashPart = ""] = url.split("#");
+      const queryPart = basePart.split("?")[1] || "";
+      const fragmentParams = new URLSearchParams(hashPart);
+      const queryParams = new URLSearchParams(queryPart);
+      const linkType = fragmentParams.get("type") || queryParams.get("type");
+
       try {
-        const [basePart, hashPart = ""] = url.split("#");
-        const queryPart = basePart.split("?")[1] || "";
-        const fragmentParams = new URLSearchParams(hashPart);
-        const queryParams = new URLSearchParams(queryPart);
+        if (isResetLink) {
+          if (linkType && linkType !== "recovery") {
+            return;
+          }
 
-        const recoveryAccessToken =
-          fragmentParams.get("access_token") || queryParams.get("access_token");
-        const recoveryRefreshToken =
-          fragmentParams.get("refresh_token") || queryParams.get("refresh_token");
-        const recoveryType = fragmentParams.get("type") || queryParams.get("type");
-
-        if (recoveryAccessToken && recoveryRefreshToken && recoveryType === "recovery") {
-          const { data, error } = await supabase.auth.setSession({
-            access_token: recoveryAccessToken,
-            refresh_token: recoveryRefreshToken,
+          const { data, error } = await supabase.auth.getSessionFromUrl({
+            url,
+            storeSession: true,
           });
           if (error || !data?.session) {
-            throw error || new Error("No session returned from recovery link");
+            throw error || new Error("No session returned from reset link");
           }
           beginPasswordResetFlow();
           return;
         }
 
-        const hasCode = fragmentParams.has("code") || queryParams.has("code");
-        const hasAccessToken = fragmentParams.has("access_token") || queryParams.has("access_token");
-
-        let authError = null;
-
-        if (hasCode) {
-          const { error } = await supabase.auth.exchangeCodeForSession(url);
-          authError = error || null;
-        } else if (hasAccessToken) {
-          const { error } = await supabase.auth.getSessionFromUrl({ url, storeSession: true });
-          authError = error || null;
-        } else {
-          authError = new Error("No auth credentials found in URL");
-        }
-
-        if (authError) throw authError;
-        if (isResetLink) {
-          beginPasswordResetFlow();
-        }
+        const { error } = await supabase.auth.getSessionFromUrl({ url, storeSession: true });
+        if (error) throw error;
       } catch (error) {
         const errorPrefix = isResetLink
           ? "Password reset link error:"
@@ -6816,7 +6813,7 @@ export default function App() {
   useEffect(() => {
     const resolveInitialUrl = async () => {
       try {
-        const initialUrl = await Linking.getInitialURL();
+        const initialUrl = await ExpoLinking.getInitialURL();
         if (initialUrl) {
           await handleAuthLink(initialUrl);
         }
@@ -6827,8 +6824,8 @@ export default function App() {
 
     resolveInitialUrl();
 
-    const subscription = Linking.addEventListener("url", (event) => {
-      handleAuthLink(event.url);
+    const subscription = ExpoLinking.addEventListener("url", ({ url }) => {
+      handleAuthLink(url);
     });
 
     return () => subscription.remove();
@@ -6905,7 +6902,12 @@ export default function App() {
       <AuthContext.Provider value={authValue}>
         <RevenueCatContext.Provider value={revenueCatValue || defaultRevenueCatState}>
           <JournalProvider>
-            <NavigationContainer ref={navigationRef} key={navigationKey} theme={navTheme}>
+            <NavigationContainer
+              ref={navigationRef}
+              key={navigationKey}
+              theme={navTheme}
+              linking={linkingConfig}
+            >
               {passwordResetRequested || !session ? (
                 <AuthStackScreen passwordResetRequested={passwordResetRequested} />
               ) : (
