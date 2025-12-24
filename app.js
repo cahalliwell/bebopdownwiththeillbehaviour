@@ -6811,11 +6811,14 @@ export default function App() {
     const sub = Linking.addEventListener("url", async ({ url }) => {
       if (url.includes("/auth/reset")) {
         console.log("🔗 Incoming reset link:", url);
-        const { error } = await supabase.auth.getSessionFromUrl({ url });
+        const { data, error } = await supabase.auth.getSessionFromUrl({ url });
 
         if (error) {
           console.log("❌ Supabase password recovery failed:", error.message);
         } else {
+          if (data?.session) {
+            setSession(data.session);
+          }
           console.log("✅ Supabase password recovery session established");
           beginPasswordResetFlow();
         }
@@ -6830,10 +6833,13 @@ export default function App() {
         if (initialUrl) {
           console.log("🔗 Initial link:", initialUrl);
           if (initialUrl.includes("/auth/reset")) {
-            const { error } = await supabase.auth.getSessionFromUrl({ url: initialUrl });
+            const { data, error } = await supabase.auth.getSessionFromUrl({ url: initialUrl });
             if (error) {
               console.log("❌ Supabase password recovery failed:", error.message);
             } else {
+              if (data?.session) {
+                setSession(data.session);
+              }
               console.log("✅ Supabase password recovery session established");
               beginPasswordResetFlow();
             }
