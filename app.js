@@ -2523,10 +2523,6 @@ function LoginScreen() {
   const [pendingEmail, setPendingEmail] = useState("");
   const navigation = useNavigation();
 
-  const handleForgotPassword = useCallback(() => {
-    navigation.navigate("ForgotPassword");
-  }, [navigation]);
-
   const handleAuth = async (type) => {
     if (!email.trim() || !password) {
       Alert.alert("Missing information", "Please enter both email and password.");
@@ -2620,12 +2616,6 @@ function LoginScreen() {
                   Use the credentials associated with your Supabase profile.
                 </Text>
 
-                <Pressable onPress={handleForgotPassword} style={{ alignSelf: "flex-start" }}>
-                  <Text style={[loginStyles.helperText, { color: palette.goldDeep }]}>
-                    Forgot Password?
-                  </Text>
-                </Pressable>
-
                 <View style={loginStyles.buttonRow}>
                   <Pressable
                     style={[loginStyles.button, loginStyles.buttonPrimary]}
@@ -2674,109 +2664,6 @@ function LoginScreen() {
         </View>
       </Modal>
     </>
-  );
-}
-
-function ForgotPasswordScreen() {
-  const [email, setEmail] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [dialogVisible, setDialogVisible] = useState(false);
-  const navigation = useNavigation();
-
-  const handleSendLink = useCallback(async () => {
-    const trimmed = email.trim();
-    if (!trimmed) {
-      Alert.alert("Missing email", "Please enter the email linked to your account.");
-      return;
-    }
-    if (!trimmed.includes("@")) {
-      Alert.alert("Invalid email", "Please enter a valid email address.");
-      return;
-    }
-    setSubmitting(true);
-    try {
-      // OAuth / social accounts cannot reset passwords; Supabase only supports email/password here.
-      const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
-        redirectTo: "ichinginsightsai://auth/reset",
-      });
-      if (error) throw error;
-      setDialogVisible(true);
-    } catch (error) {
-      Alert.alert(
-        "Reset email not sent",
-        error?.message || "We couldn't send the email. Please try again."
-      );
-    } finally {
-      setSubmitting(false);
-    }
-  }, [email]);
-
-  const handleCloseDialog = useCallback(() => {
-    setDialogVisible(false);
-    navigation.navigate("Login");
-  }, [navigation]);
-
-  return (
-    <LinearGradient
-      colors={loginGradientColors}
-      style={loginStyles.gradient}
-      start={{ x: 0.2, y: 0 }}
-      end={{ x: 0.8, y: 1 }}
-    >
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
-      >
-        <SafeAreaView style={{ flex: 1 }}>
-          <ScrollView contentContainerStyle={loginStyles.container} keyboardShouldPersistTaps="handled">
-            <View style={loginStyles.card}>
-              <View style={loginStyles.titleRow}>
-                <Ionicons name="lock-open-outline" size={28} color={palette.goldDeep} />
-                <Text style={loginStyles.title}>Forgot Password</Text>
-              </View>
-              <Text style={loginStyles.subtitle}>
-                Enter your account email and we will send you a link to reset your password.
-              </Text>
-
-              <Text style={loginStyles.label}>Email</Text>
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                placeholder="you@example.com"
-                placeholderTextColor={palette.inkMuted}
-                autoCapitalize="none"
-                autoComplete="email"
-                keyboardType="email-address"
-                textContentType="emailAddress"
-                style={loginStyles.input}
-              />
-
-              <GoldButton full onPress={handleSendLink} loading={submitting}>
-                Send reset link
-              </GoldButton>
-
-              <Pressable onPress={() => navigation.goBack()} style={{ marginTop: theme.space(1) }}>
-                <Text style={[loginStyles.helperText, { color: palette.goldDeep }]}>Back to Login</Text>
-              </Pressable>
-            </View>
-          </ScrollView>
-        </SafeAreaView>
-      </KeyboardAvoidingView>
-
-      <Modal transparent visible={dialogVisible} animationType="fade" onRequestClose={handleCloseDialog}>
-        <View style={loginStyles.modalBackdrop}>
-          <View style={loginStyles.modalCard}>
-            <Text style={loginStyles.modalTitle}>Check your email</Text>
-            <Text style={loginStyles.modalMessage}>
-              We have sent a password reset link to {email.trim() || "your inbox"}. Tap the link to
-              continue resetting your password.
-            </Text>
-            <GoldButton onPress={handleCloseDialog}>Back to Login</GoldButton>
-          </View>
-        </View>
-      </Modal>
-    </LinearGradient>
   );
 }
 
@@ -6621,7 +6508,6 @@ function AuthStackScreen({ passwordResetRequested = false }) {
       initialRouteName={passwordResetRequested ? "ResetPassword" : "Login"}
     >
       <AuthStack.Screen name="Login" component={LoginScreen} />
-      <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       <AuthStack.Screen name="ResetPassword" component={ResetPasswordScreen} />
     </AuthStack.Navigator>
   );
