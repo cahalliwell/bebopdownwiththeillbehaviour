@@ -2522,6 +2522,9 @@ function LoginScreen() {
   const [verificationDialogVisible, setVerificationDialogVisible] = useState(false);
   const [pendingEmail, setPendingEmail] = useState("");
   const navigation = useNavigation();
+  const handleForgotPasswordPress = useCallback(() => {
+    navigation.navigate("ForgotPassword");
+  }, [navigation]);
 
   const handleAuth = async (type) => {
     if (!email.trim() || !password) {
@@ -2616,6 +2619,10 @@ function LoginScreen() {
                   Use the credentials associated with your Supabase profile.
                 </Text>
 
+                <Pressable onPress={handleForgotPasswordPress} style={{ marginBottom: theme.space(1.5) }}>
+                  <Text style={[loginStyles.helperText, { color: palette.goldDeep }]}>Forgot Password?</Text>
+                </Pressable>
+
                 <View style={loginStyles.buttonRow}>
                   <Pressable
                     style={[loginStyles.button, loginStyles.buttonPrimary]}
@@ -2664,6 +2671,91 @@ function LoginScreen() {
         </View>
       </Modal>
     </>
+  );
+}
+
+function ForgotPasswordScreen() {
+  const [email, setEmail] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const navigation = useNavigation();
+
+  const handleSendReset = useCallback(async () => {
+    const trimmed = email.trim();
+    const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+    if (!trimmed || !isEmailValid) {
+      Alert.alert("Forgot Password", "Please enter a valid email address.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
+        redirectTo: "ichinginsightsai://auth/reset",
+      });
+      if (error) throw error;
+      Alert.alert(
+        "Check your email",
+        "We sent you a password reset link. Open it on this device to continue."
+      );
+      navigation.goBack();
+    } catch (error) {
+      Alert.alert(
+        "Unable to send reset email",
+        error?.message || "Please try again."
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }, [email, navigation]);
+
+  return (
+    <LinearGradient
+      colors={loginGradientColors}
+      style={loginStyles.gradient}
+      start={{ x: 0.2, y: 0 }}
+      end={{ x: 0.8, y: 1 }}
+    >
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
+      >
+        <SafeAreaView style={{ flex: 1 }}>
+          <ScrollView contentContainerStyle={loginStyles.container} keyboardShouldPersistTaps="handled">
+            <View style={loginStyles.card}>
+              <View style={loginStyles.titleRow}>
+                <Ionicons name="mail-unread-outline" size={28} color={palette.goldDeep} />
+                <Text style={loginStyles.title}>Forgot Password</Text>
+              </View>
+              <Text style={loginStyles.subtitle}>
+                Enter your email to receive a reset link. Password resets are only available for email/password accounts.
+              </Text>
+
+              <Text style={loginStyles.label}>Email</Text>
+              <TextInput
+                value={email}
+                onChangeText={setEmail}
+                placeholder="you@example.com"
+                placeholderTextColor={palette.inkMuted}
+                autoCapitalize="none"
+                autoComplete="email"
+                keyboardType="email-address"
+                textContentType="emailAddress"
+                style={loginStyles.input}
+              />
+
+              <GoldButton full onPress={handleSendReset} loading={submitting}>
+                Send reset link
+              </GoldButton>
+
+              <Pressable onPress={() => navigation.goBack()} style={{ marginTop: theme.space(1) }}>
+                <Text style={[loginStyles.helperText, { color: palette.goldDeep }]}>Back to Login</Text>
+              </Pressable>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
@@ -6508,6 +6600,7 @@ function AuthStackScreen({ passwordResetRequested = false }) {
       initialRouteName={passwordResetRequested ? "ResetPassword" : "Login"}
     >
       <AuthStack.Screen name="Login" component={LoginScreen} />
+      <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       <AuthStack.Screen name="ResetPassword" component={ResetPasswordScreen} />
     </AuthStack.Navigator>
   );
@@ -6612,10 +6705,6 @@ export default function App() {
     }
   }, [session?.user?.id]);
 
-  const beginPasswordResetFlow = useCallback(() => {
-    setPasswordResetRequested(true);
-  }, []);
-
   const completePasswordResetFlow = useCallback(() => {
     setPasswordResetRequested(false);
   }, []);
@@ -6661,56 +6750,40 @@ export default function App() {
     };
   }, []);
 
-  const handleAuthLink = useCallback(
-    async (url) => {
-      if (!url) return;
-
-      const isResetLink = url.includes("auth/reset");
-      const isAuthCallbackLink = url.includes("auth/callback");
-      if (!isResetLink && !isAuthCallbackLink) return;
-
-      try {
-        if (isResetLink) {
-          beginPasswordResetFlow();
-          return;
-        }
-
-        console.log("🔗 Handling auth callback link:", url);
-        const { error } = await supabase.auth.getSessionFromUrl({ url, storeSession: true });
-        if (error) throw error;
-      } catch (error) {
-        const errorPrefix = isResetLink
-          ? "Password reset link error:"
-          : "Auth callback link error:";
-        console.log(errorPrefix, error?.message || error);
-        const alertTitle = isResetLink ? "Password reset" : "Sign-in";
-        const alertMessage = isResetLink
-          ? "We couldn't open that link. Please request a new reset email."
-          : "We couldn't complete the login link. Please try again.";
-        Alert.alert(alertTitle, alertMessage);
-      }
-    },
-    [beginPasswordResetFlow]
-  );
-
   useEffect(() => {
-    const sub = Linking.addEventListener("url", async ({ url }) => {
-      if (url.includes("/auth/reset")) {
-        console.log("🔗 Incoming reset link:", url);
-        const { data, error } = await supabase.auth.getSessionFromUrl({ url });
+    const processResetLink = async (url) => {
+      if (!url || !url.includes("/auth/reset")) return;
+      console.log("🔗 Incoming reset link:", url);
+      const { data, error } = await supabase.auth.getSessionFromUrl({ url });
 
-        if (error) {
-          console.log("❌ Supabase password recovery failed:", error.message);
-        } else {
-          if (data?.session) {
-            setSession(data.session);
-          }
-          console.log("✅ Supabase password recovery session established");
-          beginPasswordResetFlow();
-        }
+      if (error) {
+        console.log("❌ Supabase password recovery failed:", error.message);
+        Alert.alert(
+          "Password reset",
+          "We couldn't open that link. Please request a new reset email."
+        );
+        return;
       }
 
-      await handleAuthLink(url);
+      if (data?.session) {
+        setSession(data.session);
+      }
+      console.log("✅ Supabase password recovery session established");
+      setPasswordResetRequested(true);
+    };
+
+    const processAuthCallbackLink = async (url) => {
+      if (!url || !url.includes("auth/callback")) return;
+      console.log("🔗 Handling auth callback link:", url);
+      const { error } = await supabase.auth.getSessionFromUrl({ url, storeSession: true });
+      if (error) {
+        console.log("Auth callback link error:", error?.message || error);
+      }
+    };
+
+    const sub = Linking.addEventListener("url", async ({ url }) => {
+      await processResetLink(url);
+      await processAuthCallbackLink(url);
     });
 
     const resolveInitialUrl = async () => {
@@ -6718,19 +6791,8 @@ export default function App() {
         const initialUrl = await ExpoLinking.getInitialURL();
         if (initialUrl) {
           console.log("🔗 Initial link:", initialUrl);
-          if (initialUrl.includes("/auth/reset")) {
-            const { data, error } = await supabase.auth.getSessionFromUrl({ url: initialUrl });
-            if (error) {
-              console.log("❌ Supabase password recovery failed:", error.message);
-            } else {
-              if (data?.session) {
-                setSession(data.session);
-              }
-              console.log("✅ Supabase password recovery session established");
-              beginPasswordResetFlow();
-            }
-          }
-          await handleAuthLink(initialUrl);
+          await processResetLink(initialUrl);
+          await processAuthCallbackLink(initialUrl);
         }
       } catch (error) {
         console.log("Initial URL error:", error?.message || error);
@@ -6740,7 +6802,7 @@ export default function App() {
     resolveInitialUrl();
 
     return () => sub.remove();
-  }, [beginPasswordResetFlow, handleAuthLink]);
+  }, []);
 
   useEffect(() => {
     if (!authReady) return;
@@ -6784,7 +6846,6 @@ export default function App() {
       revenueCatCustomerInfo: revenueCatValue?.customerInfo ?? null,
       revenueCatEntitlements: revenueCatValue?.activeEntitlementIds ?? [],
       passwordResetRequested,
-      beginPasswordResetFlow,
       completePasswordResetFlow,
     }),
     [
@@ -6799,7 +6860,6 @@ export default function App() {
       revenueCatValue?.customerInfo,
       revenueCatValue?.activeEntitlementIds,
       passwordResetRequested,
-      beginPasswordResetFlow,
       completePasswordResetFlow,
     ]
   );
