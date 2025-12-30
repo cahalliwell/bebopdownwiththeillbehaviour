@@ -6754,10 +6754,13 @@ export default function App() {
     const processResetLink = async (url) => {
       if (!url || !url.includes("/auth/reset")) return;
       console.log("🔗 Incoming reset link:", url);
-      const { data, error } = await supabase.auth.getSessionFromUrl({ url });
+      // Move into the reset flow immediately so the Reset screen is presented even while the session hydrates.
+      setPasswordResetRequested(true);
+      const { data, error } = await supabase.auth.getSessionFromUrl({ url, storeSession: true });
 
       if (error) {
         console.log("❌ Supabase password recovery failed:", error.message);
+        setPasswordResetRequested(false);
         Alert.alert(
           "Password reset",
           "We couldn't open that link. Please request a new reset email."
@@ -6769,7 +6772,6 @@ export default function App() {
         setSession(data.session);
       }
       console.log("✅ Supabase password recovery session established");
-      setPasswordResetRequested(true);
     };
 
     const processAuthCallbackLink = async (url) => {
