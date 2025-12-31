@@ -2768,13 +2768,6 @@ function ResetPasswordScreen() {
   const { session } = useAuth();
 
   const handleReset = useCallback(async () => {
-    if (!session) {
-      Alert.alert(
-        "Password reset",
-        "Open the reset link from your email before setting a new password."
-      );
-      return;
-    }
     const trimmed = newPassword.trim();
     const confirm = confirmPassword.trim();
     if (!trimmed || !confirm) {
@@ -2790,8 +2783,21 @@ function ResetPasswordScreen() {
       return;
     }
 
+    const { data: latestSessionData, error: latestSessionError } = await supabase.auth.getSession();
+    if (latestSessionError) {
+      console.log("🔐 Reset screen: latest session fetch error", latestSessionError?.message);
+    }
+    const resolvedSession = session || latestSessionData?.session || null;
+    if (!resolvedSession) {
+      Alert.alert(
+        "Password reset",
+        "Open the reset link from your email before setting a new password."
+      );
+      return;
+    }
+
     setSubmitting(true);
-    console.log("🔐 Reset screen: attempting password update with session", session);
+    console.log("🔐 Reset screen: attempting password update with session", resolvedSession);
     try {
       const { error } = await supabase.auth.updateUser({ password: trimmed });
       if (error) throw error;
