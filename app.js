@@ -6769,7 +6769,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const handleResetLink = async (url) => {
+    const handleRecoveryLink = async (url) => {
       if (!url) return;
       if (lastResetLinkRef.current === url) return;
       lastResetLinkRef.current = url;
@@ -6794,11 +6794,11 @@ export default function App() {
     };
 
     Linking.getInitialURL().then((url) => {
-      if (url) handleResetLink(url);
+      if (url) handleRecoveryLink(url);
     });
 
     const sub = Linking.addEventListener("url", ({ url }) => {
-      handleResetLink(url);
+      handleRecoveryLink(url);
     });
 
     return () => sub.remove();
