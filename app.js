@@ -17,7 +17,7 @@ import {
   Modal,
   Platform,
   Pressable,
-  Linking,
+  Linking as RNLinking,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -28,7 +28,7 @@ import {
   Share,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as ExpoLinking from "expo-linking";
+import * as Linking from "expo-linking";
 import {
   CommonActions,
   DefaultTheme,
@@ -6293,7 +6293,7 @@ function SettingsScreen({ navigation }) {
     const target = Platform.select({ ios: iosStore, android: androidStore, default: iosStore });
     try {
       if (target) {
-        await Linking.openURL(target);
+        await RNLinking.openURL(target);
       }
     } catch (error) {
       Alert.alert("Unable to open store", error?.message || "Please try again.");
@@ -6312,7 +6312,7 @@ function SettingsScreen({ navigation }) {
 
   const handleOpenLink = useCallback(async (url) => {
     try {
-      await Linking.openURL(url);
+      await RNLinking.openURL(url);
     } catch (error) {
       Alert.alert("Unable to open link", error?.message || "Please try again.");
     }
@@ -6342,7 +6342,7 @@ function SettingsScreen({ navigation }) {
         return;
       }
 
-      await Linking.openURL(mailto);
+      await RNLinking.openURL(mailto);
       setFeedback("");
     } catch (error) {
       Alert.alert(
@@ -6769,64 +6769,37 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const processResetLink = async (url) => {
-      if (!url || !url.includes("/auth/reset")) return;
-      if (lastResetLinkRef.current === url) {
-        console.log("🔗 Reset link already processed, skipping exchange:", url);
-        setPasswordResetRequested(true);
-        return;
-      }
+    const handleResetLink = async (url) => {
+      if (!url) return;
+      if (lastResetLinkRef.current === url) return;
       lastResetLinkRef.current = url;
-      console.log("🔗 Incoming reset link:", url);
-      // Move into the reset flow immediately so the Reset screen is presented even while the session hydrates.
+
+      if (!url.includes("/auth/v1/verify")) return;
+
       setPasswordResetRequested(true);
-      const { data, error } = await supabase.auth.getSessionFromUrl({ url, storeSession: true });
+
+      const { data, error } = await supabase.auth.getSessionFromUrl({
+        url,
+        storeSession: true,
+      });
 
       if (error) {
-        console.log("❌ Supabase password recovery failed:", error.message);
         setPasswordResetRequested(false);
-        lastResetLinkRef.current = null;
-        Alert.alert(
-          "Password reset",
-          "We couldn't open that link. Please request a new reset email."
-        );
         return;
       }
 
       if (data?.session) {
         setSession(data.session);
       }
-      console.log("✅ Supabase password recovery session established");
     };
 
-    const processAuthCallbackLink = async (url) => {
-      if (!url || !url.includes("auth/callback")) return;
-      console.log("🔗 Handling auth callback link:", url);
-      const { error } = await supabase.auth.getSessionFromUrl({ url, storeSession: true });
-      if (error) {
-        console.log("Auth callback link error:", error?.message || error);
-      }
-    };
-
-    const sub = Linking.addEventListener("url", async ({ url }) => {
-      await processResetLink(url);
-      await processAuthCallbackLink(url);
+    Linking.getInitialURL().then((url) => {
+      if (url) handleResetLink(url);
     });
 
-    const resolveInitialUrl = async () => {
-      try {
-        const initialUrl = await ExpoLinking.getInitialURL();
-        if (initialUrl) {
-          console.log("🔗 Initial link:", initialUrl);
-          await processResetLink(initialUrl);
-          await processAuthCallbackLink(initialUrl);
-        }
-      } catch (error) {
-        console.log("Initial URL error:", error?.message || error);
-      }
-    };
-
-    resolveInitialUrl();
+    const sub = Linking.addEventListener("url", ({ url }) => {
+      handleResetLink(url);
+    });
 
     return () => sub.remove();
   }, []);
