@@ -6869,7 +6869,20 @@ export default function App() {
 
   if (!marcellusLoaded || !loraLoaded || !authReady) return null;
 
-  const navigationKey = passwordResetRequested ? "reset-flow" : session ? "main" : "auth";
+  const navigationKey = passwordResetRequested
+    ? "reset-flow"
+    : session
+    ? "main"
+    : "auth";
+
+  let navigationContent = null;
+  if (passwordResetRequested) {
+    navigationContent = <AuthStackScreen passwordResetRequested />;
+  } else if (!session) {
+    navigationContent = <AuthStackScreen />;
+  } else {
+    navigationContent = <MainTabs />;
+  }
 
   return (
     <SafeAreaProvider>
@@ -6882,11 +6895,7 @@ export default function App() {
               theme={navTheme}
               linking={linkingConfig}
             >
-              {passwordResetRequested || !session ? (
-                <AuthStackScreen passwordResetRequested={passwordResetRequested} />
-              ) : (
-                <MainTabs />
-              )}
+              {navigationContent}
             </NavigationContainer>
           </JournalProvider>
         </RevenueCatContext.Provider>
