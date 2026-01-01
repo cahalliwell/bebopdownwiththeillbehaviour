@@ -6680,6 +6680,7 @@ export default function App() {
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [passwordResetRequested, setPasswordResetRequested] = useState(false);
+  const lastResetLinkRef = useRef(null);
 
   const fetchProfile = useCallback(async () => {
     const userId = session?.user?.id;
@@ -6770,6 +6771,12 @@ export default function App() {
   useEffect(() => {
     const processResetLink = async (url) => {
       if (!url || !url.includes("/auth/reset")) return;
+      if (lastResetLinkRef.current === url) {
+        console.log("🔗 Reset link already processed, skipping exchange:", url);
+        setPasswordResetRequested(true);
+        return;
+      }
+      lastResetLinkRef.current = url;
       console.log("🔗 Incoming reset link:", url);
       // Move into the reset flow immediately so the Reset screen is presented even while the session hydrates.
       setPasswordResetRequested(true);
@@ -6778,6 +6785,7 @@ export default function App() {
       if (error) {
         console.log("❌ Supabase password recovery failed:", error.message);
         setPasswordResetRequested(false);
+        lastResetLinkRef.current = null;
         Alert.alert(
           "Password reset",
           "We couldn't open that link. Please request a new reset email."
