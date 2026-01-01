@@ -6774,22 +6774,17 @@ export default function App() {
       if (lastResetLinkRef.current === url) return;
       lastResetLinkRef.current = url;
 
-      if (!url.includes("/auth/v1/verify")) return;
+      const parsed = Linking.parse(url);
+      const code = parsed?.queryParams?.code;
+      if (!code) return;
 
-      setPasswordResetRequested(true);
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
-      const { data, error } = await supabase.auth.getSessionFromUrl({
-        url,
-        storeSession: true,
-      });
-
-      if (error) {
-        setPasswordResetRequested(false);
-        return;
-      }
+      if (error) return;
 
       if (data?.session) {
         setSession(data.session);
+        setPasswordResetRequested(true);
       }
     };
 
