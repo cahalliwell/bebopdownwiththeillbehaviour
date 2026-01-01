@@ -6771,18 +6771,26 @@ export default function App() {
   useEffect(() => {
     const handleRecoveryLink = async (url) => {
       if (!url) return;
+      console.log("🔗 Recovery link received:", url);
       if (lastResetLinkRef.current === url) return;
       lastResetLinkRef.current = url;
 
       const parsed = Linking.parse(url);
       const code = parsed?.queryParams?.code;
-      if (!code) return;
+      if (!code) {
+        console.log("🔗 Recovery link missing code; skipping");
+        return;
+      }
 
       const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
-      if (error) return;
+      if (error) {
+        console.log("❌ Recovery link exchange failed:", error.message);
+        return;
+      }
 
       if (data?.session) {
+        console.log("✅ Recovery session restored; enabling reset flow");
         setSession(data.session);
         setPasswordResetRequested(true);
       }
